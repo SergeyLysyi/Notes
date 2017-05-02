@@ -11,6 +11,8 @@ import android.os.Vibrator;
 import android.support.v7.app.AppCompatActivity;
 import android.view.GestureDetector;
 import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
@@ -81,7 +83,7 @@ public class ScrollPalette extends AppCompatActivity {
         imageOfCurrentColor.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                finishWithResult();
+                finishWithResult(true);
             }
         });
 
@@ -222,9 +224,16 @@ public class ScrollPalette extends AppCompatActivity {
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if ((keyCode == KeyEvent.KEYCODE_BACK)) {
-            finishWithResult();
+            finishWithResult(false);
         }
         return super.onKeyDown(keyCode, event);
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.edit_menu, menu);
+        return true;
     }
 
     @Override
@@ -232,16 +241,20 @@ public class ScrollPalette extends AppCompatActivity {
         int id = item.getItemId();
         switch (id) {
             case android.R.id.home:
-                finishWithResult();
+                finishWithResult(false);
                 return true;
+            case R.id.action_done:
+                finishWithResult(true);
+                break;
         }
         return super.onOptionsItemSelected(item);
     }
 
-    private void finishWithResult() {
-        Intent result = new Intent();
-        result.putExtra("color", currentColor.getColor());
-        setResult(RESULT_OK, result);
+    private void finishWithResult(boolean result) {
+        Intent intent = new Intent();
+        intent.putExtra("isChanged", result);
+        intent.putExtra("color", currentColor.getColor());
+        setResult(RESULT_OK, intent);
         finish();
     }
 

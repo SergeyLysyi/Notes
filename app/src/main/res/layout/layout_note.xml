@@ -32,13 +32,13 @@
         app:layout_constraintTop_toTopOf="parent">
 
         <TextView
-            android:id="@+id/header"
+            android:id="@+id/title"
             style="@style/TextViewInListHeaderStyle"
             android:maxLines="1"
             android:text="Header"/>
 
         <TextView
-            android:id="@+id/body"
+            android:id="@+id/description"
             style="@style/TextViewInListStyle"
             android:maxLines="2"
             android:text="text"

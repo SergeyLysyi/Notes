@@ -1,4 +1,4 @@
-package sergeylysyi.threescreens;
+package sergeylysyi.threescreens.note;
 
 import android.content.Context;
 import android.support.annotation.LayoutRes;
@@ -11,6 +11,10 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import java.util.List;
+
+import sergeylysyi.threescreens.HelperTextView;
+import sergeylysyi.threescreens.MainActivity;
+import sergeylysyi.threescreens.R;
 
 
 public class NoteListAdapter extends ArrayAdapter {
@@ -32,8 +36,8 @@ public class NoteListAdapter extends ArrayAdapter {
             convertView = inflater.inflate(resource, parent, false);
             holder = new ViewHolder();
             holder.helper = ((HelperTextView) convertView.findViewById(R.id.helper));
-            holder.header = ((TextView) convertView.findViewById(R.id.header));
-            holder.body = ((TextView) convertView.findViewById(R.id.body));
+            holder.header = ((TextView) convertView.findViewById(R.id.title));
+            holder.body = ((TextView) convertView.findViewById(R.id.description));
             holder.rectangle = ((ImageView) convertView.findViewById(R.id.color));
 
             convertView.setOnClickListener(new View.OnClickListener() {
@@ -56,8 +60,8 @@ public class NoteListAdapter extends ArrayAdapter {
 
         Note note = (Note) getItem(position);
         holder.position = position;
-        holder.header.setText(note.getHeader());
-        holder.body.setText(note.getBody());
+        holder.header.setText(note.getTitle());
+        holder.body.setText(note.getDescription());
         holder.rectangle.setBackgroundColor(note.getColor());
 
         return convertView;

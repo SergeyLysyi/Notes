@@ -3,7 +3,10 @@ package sergeylysyi.threescreens;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.view.menu.MenuView;
 import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.EditText;
@@ -35,8 +38,8 @@ public class EditActivity extends AppCompatActivity {
 
         currentColor.addViewForBackgroundChange(findViewById(R.id.colorView));
 
-        headerField = (EditText) findViewById(R.id.header);
-        bodyField = (EditText) findViewById(R.id.body);
+        headerField = (EditText) findViewById(R.id.title);
+        bodyField = (EditText) findViewById(R.id.description);
         headerField.setText(intent.getStringExtra("header"));
         bodyField.setText(intent.getStringExtra("body"));
 
@@ -55,11 +58,10 @@ public class EditActivity extends AppCompatActivity {
     }
 
     @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if ((keyCode == KeyEvent.KEYCODE_BACK)) {
-            finishWithResult();
-        }
-        return super.onKeyDown(keyCode, event);
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.edit_menu, menu);
+        return true;
     }
 
     @Override
@@ -67,19 +69,31 @@ public class EditActivity extends AppCompatActivity {
         int id = item.getItemId();
         switch (id) {
             case android.R.id.home:
-                finishWithResult();
+                finishWithResult(false);
                 return true;
+            case R.id.action_done:
+                finishWithResult(true);
+                break;
         }
         return super.onOptionsItemSelected(item);
     }
 
-    private void finishWithResult() {
-        Intent result = new Intent();
-        result.putExtra("header", headerField.getText().toString());
-        result.putExtra("body", bodyField.getText().toString());
-        result.putExtra("color", currentColor.getColor());
-        result.putExtra("index", index);
-        setResult(RESULT_OK, result);
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if ((keyCode == KeyEvent.KEYCODE_BACK)) {
+            finishWithResult(false);
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
+    private void finishWithResult(boolean result) {
+        Intent intent = new Intent();
+        intent.putExtra("isChanged", result);
+        intent.putExtra("header", headerField.getText().toString());
+        intent.putExtra("body", bodyField.getText().toString());
+        intent.putExtra("color", currentColor.getColor());
+        intent.putExtra("index", index);
+        setResult(RESULT_OK, intent);
         finish();
     }
 
@@ -88,7 +102,9 @@ public class EditActivity extends AppCompatActivity {
         if (resultCode == RESULT_OK) {
             switch (requestCode) {
                 case ScrollPalette.REQUEST_PALETTE:
-                    currentColor.change(data.getIntExtra("color", 0));
+                    if (data.getBooleanExtra("isChanged", false)) {
+                        currentColor.change(data.getIntExtra("color", 0));
+                    }
                     return;
             }
         }
