@@ -4,8 +4,20 @@
     <string name="action_settings">Settings</string>
     <string name="button">choose color from palette</string>
     <string name="confirm_button">confirm</string>
-    <string name="some_text">Some Text</string>
-    <string name="description">Body</string>
-    <string name="title">Header</string>
+    <string name="description">Description</string>
+    <string name="title">Title</string>
     <string name="no_records_filler">No records</string>
+    <string name="default_prompt_item">Order</string>
+
+    <string-array name="sort_columns_list">
+        <item>Title</item>
+        <item>Creation date</item>
+        <item>Edit date</item>
+        <item>View date</item>
+    </string-array>
+
+    <string-array name="sort_order_list">
+        <item>Ascending</item>
+        <item>Descending</item>
+    </string-array>
 </resources>

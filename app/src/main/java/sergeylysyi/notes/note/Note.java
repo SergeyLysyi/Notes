@@ -1,4 +1,4 @@
-package sergeylysyi.threescreens.note;
+package sergeylysyi.notes.note;
 
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -81,7 +81,7 @@ public class Note implements Parcelable {
      * @return calendar with local time zone.
      * @throws ParseException - if the beginning of the specified string cannot be parsed.
      */
-    private static GregorianCalendar parseDate(String date) throws ParseException {
+    static GregorianCalendar parseDate(String date) throws ParseException {
         Date d = sdf.parse(date);
         GregorianCalendar calendar = new GregorianCalendar();
         calendar.setTime(d);
@@ -94,7 +94,7 @@ public class Note implements Parcelable {
      * @param calendar calendar.
      * @return ISO 8601 YYYY-MM-DDThh:mm:ss±hh:mm date string.
      */
-    private static String formatDate(GregorianCalendar calendar) {
+    static String formatDate(GregorianCalendar calendar) {
         sdf.setTimeZone(calendar.getTimeZone());
         return sdf.format(calendar.getTime());
     }

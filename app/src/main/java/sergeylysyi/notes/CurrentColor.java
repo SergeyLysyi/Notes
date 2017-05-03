@@ -1,4 +1,4 @@
-package sergeylysyi.threescreens;
+package sergeylysyi.notes;
 
 import android.graphics.Color;
 import android.view.View;

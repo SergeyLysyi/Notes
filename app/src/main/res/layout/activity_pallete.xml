@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <sergeylysyi.threescreens.SwitchingScrollView
+    <sergeylysyi.notes.SwitchingScrollView
         android:id="@+id/horizontalScrollView"
         android:layout_width="0dp"
         android:layout_height="100dp"
@@ -22,72 +22,72 @@
             android:background="@drawable/colormap"
             android:orientation="horizontal">
 
-            <sergeylysyi.threescreens.ColorButton
+            <sergeylysyi.notes.ColorButton
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" />
 
-            <sergeylysyi.threescreens.ColorButton
+            <sergeylysyi.notes.ColorButton
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" />
 
-            <sergeylysyi.threescreens.ColorButton
+            <sergeylysyi.notes.ColorButton
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" />
 
-            <sergeylysyi.threescreens.ColorButton
+            <sergeylysyi.notes.ColorButton
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" />
 
-            <sergeylysyi.threescreens.ColorButton
+            <sergeylysyi.notes.ColorButton
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" />
 
-            <sergeylysyi.threescreens.ColorButton
+            <sergeylysyi.notes.ColorButton
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" />
 
-            <sergeylysyi.threescreens.ColorButton
+            <sergeylysyi.notes.ColorButton
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" />
 
-            <sergeylysyi.threescreens.ColorButton
+            <sergeylysyi.notes.ColorButton
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" />
 
-            <sergeylysyi.threescreens.ColorButton
+            <sergeylysyi.notes.ColorButton
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" />
 
-            <sergeylysyi.threescreens.ColorButton
+            <sergeylysyi.notes.ColorButton
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" />
 
-            <sergeylysyi.threescreens.ColorButton
+            <sergeylysyi.notes.ColorButton
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" />
 
-            <sergeylysyi.threescreens.ColorButton
+            <sergeylysyi.notes.ColorButton
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" />
 
-            <sergeylysyi.threescreens.ColorButton
+            <sergeylysyi.notes.ColorButton
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" />
 
-            <sergeylysyi.threescreens.ColorButton
+            <sergeylysyi.notes.ColorButton
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" />
 
-            <sergeylysyi.threescreens.ColorButton
+            <sergeylysyi.notes.ColorButton
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" />
 
-            <sergeylysyi.threescreens.ColorButton
+            <sergeylysyi.notes.ColorButton
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" />
 
         </LinearLayout>
-    </sergeylysyi.threescreens.SwitchingScrollView>
+    </sergeylysyi.notes.SwitchingScrollView>
 
     <ImageView
         android:id="@+id/currentColor"

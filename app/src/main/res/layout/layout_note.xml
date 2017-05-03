@@ -13,7 +13,7 @@
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/helper"/>
 
-    <sergeylysyi.threescreens.HelperTextView
+    <sergeylysyi.notes.HelperTextView
         android:id="@+id/helper"
         style="@style/TextViewInListHeaderStyle"
         app:layout_constraintRight_toLeftOf="@+id/linearLayoutTextView"

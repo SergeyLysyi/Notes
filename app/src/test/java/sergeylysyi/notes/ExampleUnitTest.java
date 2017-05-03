@@ -1,4 +1,4 @@
-package sergeylysyi.threescreens;
+package sergeylysyi.notes;
 
 import org.junit.Test;
 

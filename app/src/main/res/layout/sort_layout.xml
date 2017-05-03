@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="fill_parent"
+              android:layout_height="fill_parent"
+              android:orientation="vertical"
+              android:paddingLeft="16dp"
+              android:paddingRight="16dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Order"/>
+
+    <RadioGroup
+        android:id="@+id/sort_order_rg"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp">
+
+        <RadioButton
+            android:id="@+id/ascending"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Ascending"/>
+
+        <RadioButton
+            android:id="@+id/descending"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Descending"/>
+    </RadioGroup>
+
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Sort by"/>
+
+    <RadioGroup
+        android:id="@+id/sort_column_rg"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp">
+
+        <RadioButton
+            android:id="@+id/sort_by_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Title"/>
+
+        <RadioButton
+            android:id="@+id/sort_by_created"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Created"/>
+
+        <RadioButton
+            android:id="@+id/sort_by_edited"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Edited"/>
+
+        <RadioButton
+            android:id="@+id/sort_by_Viewed"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Viewed"/>
+    </RadioGroup>
+
+
+</LinearLayout>

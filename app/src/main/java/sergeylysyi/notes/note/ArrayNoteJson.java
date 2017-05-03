@@ -1,4 +1,4 @@
-package sergeylysyi.threescreens.note;
+package sergeylysyi.notes.note;
 
 import java.text.ParseException;
 import java.util.ArrayList;

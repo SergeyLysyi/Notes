@@ -1,4 +1,4 @@
-package sergeylysyi.threescreens.note;
+package sergeylysyi.notes.note;
 
 import android.content.Context;
 import android.support.annotation.LayoutRes;
@@ -12,9 +12,9 @@ import android.widget.TextView;
 
 import java.util.List;
 
-import sergeylysyi.threescreens.HelperTextView;
-import sergeylysyi.threescreens.MainActivity;
-import sergeylysyi.threescreens.R;
+import sergeylysyi.notes.HelperTextView;
+import sergeylysyi.notes.MainActivity;
+import sergeylysyi.notes.R;
 
 
 public class NoteListAdapter extends ArrayAdapter {
@@ -43,7 +43,7 @@ public class NoteListAdapter extends ArrayAdapter {
             convertView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    ((MainActivity) v.getContext()).editNote((Note) getItem(holder.position));
+                    ((MainActivity) v.getContext()).launchEdit((Note) getItem(holder.position));
                 }
             });
             convertView.setOnLongClickListener(new View.OnLongClickListener() {

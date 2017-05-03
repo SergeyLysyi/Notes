@@ -1,4 +1,4 @@
-package sergeylysyi.threescreens;
+package sergeylysyi.notes;
 
 import android.content.Context;
 import android.support.test.InstrumentationRegistry;
