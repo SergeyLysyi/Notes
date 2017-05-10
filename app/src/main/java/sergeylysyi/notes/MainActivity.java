@@ -68,6 +68,7 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        deleteDatabase("Notes.db");
         saver = new NoteSaver(this);
 
         dialogInvoker = new DialogInvoker(this);
@@ -85,10 +86,10 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
 
         int prefOrderOrdinal = settings.getInt("sort_preferred_order", -1);
         int prefFieldOrdinal = settings.getInt("sort_preferred_field", -1);
-        if (prefOrderOrdinal>-1) {
+        if (prefOrderOrdinal > -1) {
             sortOrderPreference = NoteSortOrder.values()[prefOrderOrdinal];
         }
-        if (prefFieldOrdinal>-1) {
+        if (prefFieldOrdinal > -1) {
             sortFieldPreference = NoteSortField.values()[prefFieldOrdinal];
         }
 
@@ -378,6 +379,19 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
                     reloadNotes();
                 }
                 break;
+            case R.id.action_add_many:
+                //TODO: add more randomness ?
+                for (int i = 0; i < 100000; i++) {
+                    Note note = new Note();
+                    allNotes.add(note);
+                    editNote(note,
+                            "Generated Note " + i,
+                            "Body of \"Generated note " + i + "\"",
+                            Color.WHITE);
+                    if (i%100 == 0){
+                        System.out.println("Number " + i + " generated...");
+                    }
+                }
         }
         return super.onOptionsItemSelected(item);
     }

@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/SavingToSQLite.iml" filepath="$PROJECT_DIR$/SavingToSQLite.iml" />
+      <module fileurl="file://$PROJECT_DIR$/SQLiteGoesAsync.iml" filepath="$PROJECT_DIR$/SQLiteGoesAsync.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
     </modules>
   </component>
