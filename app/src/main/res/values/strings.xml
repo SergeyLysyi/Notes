@@ -12,7 +12,7 @@
     <string name="dialog_negative_button">Cancel</string>
     <string name="dialog_pick_date">Pick Date</string>
     <string name="dialog_positive_button">OK</string>
-    <string name="dialog_manage_filters_title">Your Filters</string>
+    <string name="dialog_manage_filters_title">Apply filter</string>
     <string name="dialog_sort_title">Sort</string>
     <string name="dialog_sort_positive_button">Sort</string>
     <string name="dialog_search_title">Search</string>
@@ -21,7 +21,7 @@
     <string name="dialog_filter_title">Filter</string>
     <string name="dialog_filter_positive_button">Filter</string>
     <string name="dialog_pick_time_title">Pick Time</string>
-    <string name="dialog_manage_filters_add">Add filter</string>
+    <string name="dialog_manage_filters_add">Save current filter</string>
     <string name="dialog_manage_filters_add_already_exists">Filter with that name already exists</string>
     <string name="dialog_filter_manager_input_title">Input name for new entry:</string>
     <string name="dialog_manage_filters_input_hint">Filter name</string>
@@ -43,6 +43,8 @@
     <string name="dialog_filter_field_viewed">Viewed</string>
     <string name="dialog_deleted_item_string_format">%1$s %2$s</string>
     <string name="dialog_filter_pick_criteria">Pick criteria</string>
+    <string name="export_no_file_manager">No file manager to pick file for export</string>
+    <string name="import_no_file_manager">No file manager to pick file for import</string>
 
     <string-array name="sort_columns_list">
         <item>Title</item>

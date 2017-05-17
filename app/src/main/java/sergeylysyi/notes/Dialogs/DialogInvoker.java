@@ -132,7 +132,7 @@ public class DialogInvoker {
         final NoteSaver.NoteDateField[] dateField = new NoteSaver.NoteDateField[1];
         dateField[0] = currentFilter.dateField;
         final AtomicBoolean afterSet = new AtomicBoolean(false);
-        final AtomicBoolean beforeSet = new AtomicBoolean(true);
+        final AtomicBoolean beforeSet = new AtomicBoolean(false);
         if (currentFilter.after != null) {
             afterSet.set(true);
         }
@@ -177,15 +177,29 @@ public class DialogInvoker {
                     }
                 }));
 
+        Callback onAfterChange = new Callback() {
+            @Override
+            public void call(Object result) {
+                afterSet.set(true);
+            }
+        };
+
+        Callback onBeforeChange = new Callback() {
+            @Override
+            public void call(Object result) {
+                beforeSet.set(true);
+            }
+        };
+
         v.findViewById(R.id.time_after_filter).setOnClickListener(
-                new TimePickerDialog(context, timeFormat, after, afterSet, null));
+                new TimePickerDialog(context, timeFormat, after, afterSet, onAfterChange));
         v.findViewById(R.id.date_after_filter).setOnClickListener(
-                new DatePickerDialog(context, dateFormat, after, afterSet, null));
+                new DatePickerDialog(context, dateFormat, after, afterSet, onAfterChange));
 
         v.findViewById(R.id.time_before_filter).setOnClickListener(
-                new TimePickerDialog(context, timeFormat, before, beforeSet, null));
+                new TimePickerDialog(context, timeFormat, before, beforeSet, onBeforeChange));
         v.findViewById(R.id.date_before_filter).setOnClickListener(
-                new DatePickerDialog(context, dateFormat, before, beforeSet, null));
+                new DatePickerDialog(context, dateFormat, before, beforeSet, onBeforeChange));
     }
 
     public void manageFiltersDialog(final String[] entriesNames, final ManageFiltersResultListener listener) {
