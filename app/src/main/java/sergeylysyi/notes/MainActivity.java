@@ -15,6 +15,7 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -198,9 +199,13 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
     private void addNotesFromList(final List<Note> noteList) {
         allNotes.addAll(noteList);
         for (Note note : noteList) {
-            saver.insertOrUpdate(note);
+            saver.insertOrUpdateWithCallback(note, new AsyncNoteSaver.OnPostExecute() {
+                @Override
+                public void onPostExecute() {
+                    adapter.notifyDataSetChanged();
+                }
+            });
         }
-        adapter.notifyDataSetChanged();
     }
 
     private void searchSubstring(String inTitle, String inDescription) {
@@ -426,16 +431,24 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
     }
 
     private void fillAndUpload() {
-        int total = 100000;
-        for (int i = 0; i < 100; i++) {
-            final List<Note> list = new ArrayList<>(total / 100);
-            for (int j = 0; j < total / 100; j++) {
-                list.add(new Note("Generated Note " + (i * 100 + j), "Generated Description " + (i * 100 + j), Color.WHITE));
-            }
-            System.out.println(i + "%");
-            addNotesFromList(list);
+//        int total = 100000;
+//        int count = 0;
+//        for (int i = 0; i < 100; i++) {
+//            final List<Note> list = new ArrayList<>(total / 100);
+//            for (int j = 0; j < total / 100; j++) {
+//                count++;
+//                list.add(new Note("Generated Note " + (count), "Generated Description " + (count), Color.WHITE));
+//            }
+//            System.out.println(i + "%");
+//            addNotesFromList(list);
+//        }
+//        System.out.println("ALL LAUNCHED");
+
+        final List<Note> list = new ArrayList<>(100);
+        for (int j = 0; j < 100; j++) {
+            list.add(new Note("Generated Note " + (j), "Generated Description " + (j), Color.WHITE));
         }
-        System.out.println("ALL LAUNCHED");
+        addNotesFromList(list);
     }
 
     private void clearSearch() {
