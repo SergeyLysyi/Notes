@@ -1,6 +1,7 @@
 package sergeylysyi.notes;
 
 import android.Manifest;
+import android.content.ActivityNotFoundException;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -198,6 +199,9 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
         theIntent.setData(Uri.fromFile(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)));
         try {
             startActivityForResult(theIntent, IMPORT_REQUEST_CODE);
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(this, R.string.import_no_file_manager, Toast.LENGTH_LONG).show();
+            e.printStackTrace();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -209,6 +213,9 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
         theIntent.setData(Uri.fromFile(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)));
         try {
             startActivityForResult(theIntent, EXPORT_REQUEST_CODE);
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(this, R.string.export_no_file_manager, Toast.LENGTH_LONG).show();
+            e.printStackTrace();
         } catch (Exception e) {
             e.printStackTrace();
         }
