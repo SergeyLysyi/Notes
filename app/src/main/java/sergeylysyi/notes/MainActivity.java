@@ -5,6 +5,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -37,6 +38,7 @@ import java.util.List;
 
 import sergeylysyi.notes.Dialogs.DialogInvoker;
 import sergeylysyi.notes.note.ArrayNoteJson;
+import sergeylysyi.notes.note.AsyncNoteSaver;
 import sergeylysyi.notes.note.Note;
 import sergeylysyi.notes.note.NoteListAdapter;
 import sergeylysyi.notes.note.NoteSaver;
@@ -63,7 +65,7 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
     private final NoteSaver.NoteDateField defaultDateFieldPreference = NoteSaver.NoteDateField.edited;
     private List<Note> allNotes = new ArrayList<>();
     private NoteListAdapter adapter;
-    private NoteSaver saver;
+    private AsyncNoteSaver saver;
     private DialogInvoker dialogInvoker;
     private FiltersHolder filtersHolder;
     private boolean search_on = false;
@@ -74,7 +76,10 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        saver = new NoteSaver(this);
+        deleteDatabase("Notes.db");
+
+        //TODO: rewrite methods for async;
+        saver = new AsyncNoteSaver(this);
 
         dialogInvoker = new DialogInvoker(this);
 
@@ -186,6 +191,14 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
         allNotes.removeAll(allNotes);
         allNotes.addAll(noteList);
         saver.repopulateWith(allNotes);
+        adapter.notifyDataSetChanged();
+    }
+
+    private void addNotesFromList(final List<Note> noteList) {
+        allNotes.addAll(noteList);
+        for (Note note : noteList) {
+            saver.insertOrUpdate(note);
+        }
         adapter.notifyDataSetChanged();
     }
 
@@ -395,11 +408,27 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
                     updateNotesFromSaver();
                 }
                 break;
+            case R.id.action_fill:
+                fillAndUpload();
+                break;
             case R.id.action_manage_filters:
                 dialogInvoker.manageFiltersDialog(filtersHolder.getFilterNames(), this);
                 break;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void fillAndUpload() {
+        int total = 100000;
+        for (int i = 0; i < 100; i++) {
+            final List<Note> list = new ArrayList<>(total / 100);
+            for (int j = 0; j < total / 100; j++) {
+                list.add(new Note("Generated Note " + (i * 100 + j), "Generated Description " + (i * 100 + j), Color.WHITE));
+            }
+            System.out.println(i + "%");
+            addNotesFromList(list);
+        }
+        System.out.println("ALL LAUNCHED");
     }
 
     private void clearSearch() {

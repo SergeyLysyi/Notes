@@ -44,7 +44,8 @@ public class NoteSaver extends SQLiteOpenHelper {
         db.execSQL(CREATE_TABLE_QUERY);
     }
 
-    private long addNote(SQLiteDatabase db, Note note) {
+    private long addNote(Note note) {
+        SQLiteDatabase db = getWritableDatabase();
         ContentValues values = new ContentValues(3);
         values.put(COLUMN_TITLE, note.getTitle());
         values.put(COLUMN_DESCRIPTION, note.getDescription());
@@ -52,7 +53,12 @@ public class NoteSaver extends SQLiteOpenHelper {
         values.put(COLUMN_CREATED, note.getCreated());
         values.put(COLUMN_EDITED, note.getEdited());
         values.put(COLUMN_VIEWED, note.getViewed());
-        long result = db.insert(TABLE_NOTES, null, values);
+        long result;
+        try {
+            result = db.insert(TABLE_NOTES, null, values);
+        } finally {
+            db.close();
+        }
         note._id = result;
         return result;
     }
@@ -78,12 +84,7 @@ public class NoteSaver extends SQLiteOpenHelper {
     public boolean insertOrUpdate(Note note) {
         long result = updateNote(note);
         if (result == 0) {
-            SQLiteDatabase db = getWritableDatabase();
-            try {
-                result = addNote(db, note);
-            } finally {
-                db.close();
-            }
+            result = addNote(note);
         }
         return result > 0;
     }
@@ -101,10 +102,14 @@ public class NoteSaver extends SQLiteOpenHelper {
 
     public void repopulateWith(List<Note> notes) {
         SQLiteDatabase db = getWritableDatabase();
-        db.execSQL(DROP_TABLE_QUERY);
-        db.execSQL(CREATE_TABLE_QUERY);
-        for (Note note : notes) {
-            addNote(db, note);
+        try {
+            db.execSQL(DROP_TABLE_QUERY);
+            db.execSQL(CREATE_TABLE_QUERY);
+            for (Note note : notes) {
+                addNote(note);
+            }
+        } finally {
+            db.close();
         }
     }
 
@@ -130,7 +135,7 @@ public class NoteSaver extends SQLiteOpenHelper {
         }
     }
 
-    private List<Note> getNotes(String sortByColumn, String order,
+    protected List<Note> getNotes(String sortByColumn, String order,
                                 String titleSubstring, String descriptionSubstring,
                                 String columnForDateFilter, GregorianCalendar afterDate, GregorianCalendar beforeDate) {
         if (sortByColumn != null)
@@ -244,6 +249,7 @@ public class NoteSaver extends SQLiteOpenHelper {
     public enum NoteSortOrder {ascending, descending}
 
     public enum NoteDateField {created, edited, viewed}
+
 
     static public class QueryFilter {
         public NoteSortOrder sortOrder;

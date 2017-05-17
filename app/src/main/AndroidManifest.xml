@@ -28,6 +28,8 @@
         <activity
             android:name="sergeylysyi.notes.ScrollPalette"
             android:label="Choose Color"/>
+
+        <service android:name=".note.NoteService"/>
     </application>
 
 </manifest>
