@@ -4,6 +4,7 @@ import android.content.Context;
 import android.os.AsyncTask;
 
 import java.util.ArrayList;
+import java.util.GregorianCalendar;
 import java.util.List;
 
 public class AsyncNoteSaver extends NoteSaver {
@@ -121,7 +122,7 @@ public class AsyncNoteSaver extends NoteSaver {
         }
     }
 
-    class AsyncQuery extends Query {
+    public class AsyncQuery extends Query {
         @Override
         public List<Note> get() {
             return getWithCallback(new OnPostExecute() {
@@ -147,6 +148,26 @@ public class AsyncNoteSaver extends NoteSaver {
                 }
             }.execute();
             return notes;
+        }
+
+        @Override
+        public AsyncQuery betweenDatesOf(NoteDateField column, GregorianCalendar after, GregorianCalendar before) {
+            return (AsyncQuery) super.betweenDatesOf(column, after, before);
+        }
+
+        @Override
+        public AsyncQuery sorted(NoteSortField byColumn, NoteSortOrder withOrder) {
+            return (AsyncQuery) super.sorted(byColumn, withOrder);
+        }
+
+        @Override
+        public AsyncQuery fromFilter(QueryFilter filter) {
+            return (AsyncQuery) super.fromFilter(filter);
+        }
+
+        @Override
+        public AsyncQuery withSubstring(String titleSubstring, String descriptionSubstring) {
+            return (AsyncQuery) super.withSubstring(titleSubstring, descriptionSubstring);
         }
     }
 }

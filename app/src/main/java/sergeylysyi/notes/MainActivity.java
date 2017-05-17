@@ -15,7 +15,6 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -37,6 +36,7 @@ import java.nio.charset.Charset;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import sergeylysyi.notes.Dialogs.DialogInvoker;
 import sergeylysyi.notes.note.ArrayNoteJson;
@@ -179,14 +179,23 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
     }
 
     private void updateNotesFromSaver() {
-        NoteSaver.Query query = saver.new Query().fromFilter(filtersHolder.getCurrentFilterCopy());
+        AsyncNoteSaver.AsyncQuery query = saver.new AsyncQuery().fromFilter(filtersHolder.getCurrentFilterCopy());
         updateNotesByQuery(query);
     }
 
-    private void updateNotesByQuery(NoteSaver.Query query) {
-        allNotes.removeAll(allNotes);
-        allNotes.addAll(query.get());
-        adapter.notifyDataSetChanged();
+    private void updateNotesByQuery(AsyncNoteSaver.AsyncQuery query) {
+        final AtomicReference<List<Note>> resultRef = new AtomicReference<>();
+        List<Note> result = new ArrayList<>();
+        resultRef.set(result);
+        AsyncNoteSaver.OnPostExecute callback = new AsyncNoteSaver.OnPostExecute() {
+            @Override
+            public void onPostExecute() {
+                allNotes.removeAll(allNotes);
+                allNotes.addAll(resultRef.get());
+                adapter.notifyDataSetChanged();
+            }
+        };
+        result = query.getWithCallback(callback);
     }
 
     private void updateNotesFromList(List<Note> noteList) {
@@ -209,7 +218,7 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
     }
 
     private void searchSubstring(String inTitle, String inDescription) {
-        updateNotesByQuery(saver.new Query().withSubstring(inTitle, inDescription));
+        updateNotesByQuery(saver.new AsyncQuery().withSubstring(inTitle, inDescription));
     }
 
     private void launchPickFile() {
@@ -431,24 +440,22 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
     }
 
     private void fillAndUpload() {
-//        int total = 100000;
-//        int count = 0;
-//        for (int i = 0; i < 100; i++) {
-//            final List<Note> list = new ArrayList<>(total / 100);
-//            for (int j = 0; j < total / 100; j++) {
-//                count++;
-//                list.add(new Note("Generated Note " + (count), "Generated Description " + (count), Color.WHITE));
-//            }
-//            System.out.println(i + "%");
-//            addNotesFromList(list);
-//        }
-//        System.out.println("ALL LAUNCHED");
-
-        final List<Note> list = new ArrayList<>(100);
-        for (int j = 0; j < 100; j++) {
-            list.add(new Note("Generated Note " + (j), "Generated Description " + (j), Color.WHITE));
+        int total = 100000;
+        int count = 0;
+        int delimiter = 100;
+        for (int i = 0; i < delimiter; i++) {
+            final List<Note> list = new ArrayList<>(total / delimiter);
+            for (int j = 0; j < total / delimiter; j++) {
+                count++;
+                String title = "Generated Note " + (count);
+                if (count % 2 == 1) {
+                    title = "Odd " + title;
+                }
+                list.add(new Note(title, "Generated Description " + (count), Color.WHITE));
+            }
+            addNotesFromList(list);
         }
-        addNotesFromList(list);
+        System.out.println("ALL LAUNCHED");
     }
 
     private void clearSearch() {
