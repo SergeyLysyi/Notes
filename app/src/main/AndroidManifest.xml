@@ -29,7 +29,7 @@
             android:name="sergeylysyi.notes.ScrollPalette"
             android:label="Choose Color"/>
 
-        <service android:name=".note.NoteService"/>
+        <service android:name=".note.NoteSaverService"/>
     </application>
 
 </manifest>
