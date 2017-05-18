@@ -1,5 +1,7 @@
 package sergeylysyi.notes.note;
 
+import android.graphics.Color;
+
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -34,12 +36,10 @@ public class ArrayNoteJson {
         String created;
         String edited;
         String viewed;
-        private int intColor;
 
         NoteJson(Note note) {
             title = note.getTitle();
             description = note.getDescription();
-            intColor = note.getColor();
             color = String.format("#%06x", note.getColor());
             created = note.getCreated();
             edited = note.getEdited();
@@ -47,7 +47,7 @@ public class ArrayNoteJson {
         }
 
         Note getNote() throws ParseException {
-            return new Note(title, description, intColor, created, edited, viewed);
+            return new Note(title, description, Color.parseColor(color), created, edited, viewed);
         }
     }
 

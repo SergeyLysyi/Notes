@@ -8,6 +8,43 @@
     <string name="title">Title</string>
     <string name="no_records_filler">No records</string>
     <string name="default_prompt_item">Order</string>
+    <string name="add_new_filter_entry">+</string>
+    <string name="dialog_negative_button">Cancel</string>
+    <string name="dialog_pick_date">Pick Date</string>
+    <string name="dialog_positive_button">OK</string>
+    <string name="dialog_manage_filters_title">Apply filter</string>
+    <string name="dialog_sort_title">Sort</string>
+    <string name="dialog_sort_positive_button">Sort</string>
+    <string name="dialog_search_title">Search</string>
+    <string name="dialog_search_positive_button">Search</string>
+    <string name="dialog_search_empty_pattern">empty search pattern</string>
+    <string name="dialog_filter_title">Filter</string>
+    <string name="dialog_filter_positive_button">Filter</string>
+    <string name="dialog_pick_time_title">Pick Time</string>
+    <string name="dialog_manage_filters_add">Save current filter</string>
+    <string name="dialog_manage_filters_add_already_exists">Filter with that name already exists</string>
+    <string name="dialog_filter_manager_input_title">Input name for new entry:</string>
+    <string name="dialog_manage_filters_input_hint">Filter name</string>
+    <string name="dialog_manage_filters_input_ifempty">Name can\'t be empty</string>
+    <string name="dialog_close">Close</string>
+    <string name="dialog_manage_filter_deleted_prefix"><![CDATA[<deleted>]]></string>
+    <string name="dialog_delete_title">Delete note ?</string>
+    <string name="export_success_toast_string_formatted">Notes exported to %1$s</string>
+    <string name="export_error_toast_string_formatted">Export to file %1$s failed</string>
+    <string name="import_success_toast_string_formatted">Notes imported from %1$s</string>
+    <string name="import_parse_error_toast_string_formatted">Can\'t parse file %1$s  , is that really json with notes ?</string>
+    <string name="import_access_error_toast_string_formatted">Can\'t open file %1$s</string>
+    <string name="palette_rgb_string_formatted" formatted="false">R: %2h\nG: %2h\nB: %2h</string>
+    <string name="palette_hsv_string_formatted" formatted="false">H: %3.2f\nS: %3.2f\nV: %3.2f</string>
+    <string name="permission_toast_success">Thank you! Tap that button again, it should work now</string>
+    <string name="permission_toast_denied">I need this permission to import/export files</string>
+    <string name="dialog_filter_field_created">Created</string>
+    <string name="dialog_filter_field_edited">Edited</string>
+    <string name="dialog_filter_field_viewed">Viewed</string>
+    <string name="dialog_deleted_item_string_format">%1$s %2$s</string>
+    <string name="dialog_filter_pick_criteria">Pick criteria</string>
+    <string name="export_no_file_manager">No file manager to pick file for export</string>
+    <string name="import_no_file_manager">No file manager to pick file for import</string>
 
     <string-array name="sort_columns_list">
         <item>Title</item>

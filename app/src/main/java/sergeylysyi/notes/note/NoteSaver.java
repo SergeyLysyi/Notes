@@ -14,14 +14,14 @@ import java.util.List;
 
 
 public class NoteSaver extends SQLiteOpenHelper {
-    public static final String COLUMN_TITLE = "Title";
-    public static final String COLUMN_DESCRIPTION = "Description";
-    public static final String COLUMN_COLOR = "Color";
-    public static final String COLUMN_CREATED = "Created";
-    public static final String COLUMN_EDITED = "Edited";
-    public static final String COLUMN_VIEWED = "Opened";
-    public static final String SORT_ORDER_ASCENDING = "ASC";
-    public static final String SORT_ORDER_DESCENDING = "DESC";
+    private static final String COLUMN_TITLE = "Title";
+    private static final String COLUMN_DESCRIPTION = "Description";
+    private static final String COLUMN_COLOR = "Color";
+    private static final String COLUMN_CREATED = "Created";
+    private static final String COLUMN_EDITED = "Edited";
+    private static final String COLUMN_VIEWED = "Opened";
+    private static final String SORT_ORDER_ASCENDING = "ASC";
+    private static final String SORT_ORDER_DESCENDING = "DESC";
     private static final String DB_NAME = "Notes.db";
     private static final int VERSION = 1;
     private static final String TABLE_NOTES = "Notes";
@@ -239,6 +239,32 @@ public class NoteSaver extends SQLiteOpenHelper {
         onCreate(db);
     }
 
+    public enum NoteSortField {title, created, edited, viewed}
+
+    public enum NoteSortOrder {ascending, descending}
+
+    public enum NoteDateField {created, edited, viewed}
+
+    static public class QueryFilter {
+        public NoteSortOrder sortOrder;
+        public NoteSortField sortField;
+        public NoteDateField dateField;
+        public GregorianCalendar after;
+        public GregorianCalendar before;
+
+        public QueryFilter() {
+
+        }
+
+        public QueryFilter(QueryFilter filter) {
+            sortOrder = filter.sortOrder;
+            sortField = filter.sortField;
+            dateField = filter.dateField;
+            after = filter.after;
+            before = filter.before;
+        }
+    }
+
     public class Query {
         String sortByColumn = null;
         String sortWithOrder = null;
@@ -251,9 +277,44 @@ public class NoteSaver extends SQLiteOpenHelper {
         public Query() {
         }
 
-        public Query sorted(String byColumn, String withOrder) {
-            sortByColumn = byColumn;
-            sortWithOrder = withOrder;
+        public Query fromFilter(QueryFilter filter) {
+            return this
+                    .sorted(filter.sortField, filter.sortOrder)
+                    .betweenDatesOf(filter.dateField, filter.after, filter.before);
+        }
+
+        public Query sorted(NoteSortField byColumn, NoteSortOrder withOrder) {
+            if (byColumn != null) {
+                switch (byColumn) {
+                    case title:
+                        sortByColumn = NoteSaver.COLUMN_TITLE;
+                        break;
+                    case created:
+                        sortByColumn = NoteSaver.COLUMN_CREATED;
+                        break;
+                    case edited:
+                        sortByColumn = NoteSaver.COLUMN_EDITED;
+                        break;
+                    case viewed:
+                        sortByColumn = NoteSaver.COLUMN_VIEWED;
+                        break;
+                    default:
+                        throw new IllegalArgumentException("no matching case for argument \"byField\"");
+                }
+            }
+
+            if (withOrder != null) {
+                switch (withOrder) {
+                    case ascending:
+                        sortWithOrder = NoteSaver.SORT_ORDER_ASCENDING;
+                        break;
+                    case descending:
+                        sortWithOrder = NoteSaver.SORT_ORDER_DESCENDING;
+                        break;
+                    default:
+                        throw new IllegalArgumentException("no matching case for argument \"withOrder\" ");
+                }
+            }
             return this;
         }
 
@@ -263,8 +324,22 @@ public class NoteSaver extends SQLiteOpenHelper {
             return this;
         }
 
-        public Query betweenDatesOf(String column, GregorianCalendar after, GregorianCalendar before) {
-            columnForDateFilter = column;
+        public Query betweenDatesOf(NoteDateField column, GregorianCalendar after, GregorianCalendar before) {
+            if (column != null) {
+                switch (column) {
+                    case created:
+                        columnForDateFilter = NoteSaver.COLUMN_CREATED;
+                        break;
+                    case edited:
+                        columnForDateFilter = NoteSaver.COLUMN_EDITED;
+                        break;
+                    case viewed:
+                        columnForDateFilter = NoteSaver.COLUMN_VIEWED;
+                        break;
+                    default:
+                        throw new IllegalArgumentException("no matching case for argument \"sortField\"");
+                }
+            }
             afterDate = after;
             beforeDate = before;
             return this;

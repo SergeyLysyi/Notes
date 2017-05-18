@@ -24,6 +24,7 @@
     <item
         android:id="@+id/action_filter"
         android:title="Filter"/>
-
-
+    <item
+        android:id="@+id/action_manage_filters"
+        android:title="Manage Filters"/>
 </menu>

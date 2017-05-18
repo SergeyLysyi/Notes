@@ -10,11 +10,21 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.EditText;
 
+import static sergeylysyi.notes.ScrollPalette.INTENT_KEY_COLOR;
+import static sergeylysyi.notes.ScrollPalette.INTENT_KEY_COLOR_TO_EDIT;
+import static sergeylysyi.notes.ScrollPalette.INTENT_KEY_IS_CHANGED;
+
 
 public class EditActivity extends AppCompatActivity {
+    public static final String INTENT_KEY_NOTE_TITLE = "header";
+    public static final String INTENT_KEY_NOTE_DESCRIPTION = "body";
+    public static final String INTENT_KEY_NOTE_COLOR = "color";
+    public static final String INTENT_KEY_NOTE_INDEX = "index";
+    public static final String INTENT_KEY_NOTE_IS_CHANGED = "isChanged";
     public static final int EDIT_NOTE = 1;
     public static final int DEFAULT_COLOR_FOR_INTENT = 0;
     public static final int DEFAULT_INDEX_FOR_INTENT = -1;
+    public static final String SAVED_KEY_CURRENT_COLOR = "current_color";
 
     private int index;
 
@@ -32,15 +42,15 @@ public class EditActivity extends AppCompatActivity {
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
         Intent intent = getIntent();
-        currentColor = new CurrentColor(intent.getIntExtra("color", DEFAULT_COLOR_FOR_INTENT));
-        index = intent.getIntExtra("index", DEFAULT_INDEX_FOR_INTENT);
+        currentColor = new CurrentColor(intent.getIntExtra(INTENT_KEY_NOTE_COLOR, DEFAULT_COLOR_FOR_INTENT));
+        index = intent.getIntExtra(INTENT_KEY_NOTE_INDEX, DEFAULT_INDEX_FOR_INTENT);
 
         currentColor.addViewForBackgroundChange(findViewById(R.id.colorView));
 
         headerField = (EditText) findViewById(R.id.title);
         bodyField = (EditText) findViewById(R.id.description);
-        headerField.setText(intent.getStringExtra("header"));
-        bodyField.setText(intent.getStringExtra("body"));
+        headerField.setText(intent.getStringExtra(INTENT_KEY_NOTE_TITLE));
+        bodyField.setText(intent.getStringExtra(INTENT_KEY_NOTE_DESCRIPTION));
 
         findViewById(R.id.colorView).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -52,7 +62,7 @@ public class EditActivity extends AppCompatActivity {
 
     void paletteForResult() {
         Intent intent = new Intent(this, ScrollPalette.class);
-        intent.putExtra("color to edit", currentColor.getColor());
+        intent.putExtra(INTENT_KEY_COLOR_TO_EDIT, currentColor.getColor());
         startActivityForResult(intent, ScrollPalette.REQUEST_PALETTE);
     }
 
@@ -87,11 +97,11 @@ public class EditActivity extends AppCompatActivity {
 
     private void finishWithResult(boolean result) {
         Intent intent = new Intent();
-        intent.putExtra("isChanged", result);
-        intent.putExtra("header", headerField.getText().toString());
-        intent.putExtra("body", bodyField.getText().toString());
-        intent.putExtra("color", currentColor.getColor());
-        intent.putExtra("index", index);
+        intent.putExtra(INTENT_KEY_NOTE_IS_CHANGED, result);
+        intent.putExtra(INTENT_KEY_NOTE_TITLE, headerField.getText().toString());
+        intent.putExtra(INTENT_KEY_NOTE_DESCRIPTION, bodyField.getText().toString());
+        intent.putExtra(INTENT_KEY_NOTE_COLOR, currentColor.getColor());
+        intent.putExtra(INTENT_KEY_NOTE_INDEX, index);
         setResult(RESULT_OK, intent);
         finish();
     }
@@ -101,8 +111,8 @@ public class EditActivity extends AppCompatActivity {
         if (resultCode == RESULT_OK) {
             switch (requestCode) {
                 case ScrollPalette.REQUEST_PALETTE:
-                    if (data.getBooleanExtra("isChanged", false)) {
-                        currentColor.change(data.getIntExtra("color", 0));
+                    if (data.getBooleanExtra(INTENT_KEY_IS_CHANGED, false)) {
+                        currentColor.change(data.getIntExtra(INTENT_KEY_COLOR, 0));
                     }
                     return;
             }
@@ -112,7 +122,7 @@ public class EditActivity extends AppCompatActivity {
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
-        outState.putInt("current_color", currentColor.getColor());
+        outState.putInt(SAVED_KEY_CURRENT_COLOR, currentColor.getColor());
         super.onSaveInstanceState(outState);
     }
 
@@ -120,7 +130,7 @@ public class EditActivity extends AppCompatActivity {
     protected void onRestoreInstanceState(Bundle savedInstanceState) {
         super.onRestoreInstanceState(savedInstanceState);
 
-        int color = savedInstanceState.getInt("current_color");
+        int color = savedInstanceState.getInt(SAVED_KEY_CURRENT_COLOR);
         currentColor.change(color);
     }
 }

@@ -22,7 +22,9 @@ public class Note implements Parcelable {
             return new Note[size];
         }
     };
-    private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZZZZZ");
+    private static final SimpleDateFormat date_format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZZZZZ");
+    private static final String DEFAULT_TITLE = "";
+    private static final String DEFAULT_DESCRIPTION = "";
 
     //for NoteSaver purposes
     long _id;
@@ -35,7 +37,7 @@ public class Note implements Parcelable {
     private GregorianCalendar lastOpenDate;
 
     public Note() {
-        this("", "", 0);
+        this(DEFAULT_TITLE, DEFAULT_DESCRIPTION, 0);
     }
 
     public Note(String title, String description, int color) {
@@ -82,7 +84,7 @@ public class Note implements Parcelable {
      * @throws ParseException - if the beginning of the specified string cannot be parsed.
      */
     static GregorianCalendar parseDate(String date) throws ParseException {
-        Date d = sdf.parse(date);
+        Date d = date_format.parse(date);
         GregorianCalendar calendar = new GregorianCalendar();
         calendar.setTime(d);
         return calendar;
@@ -95,8 +97,8 @@ public class Note implements Parcelable {
      * @return ISO 8601 YYYY-MM-DDThh:mm:ss±hh:mm date string.
      */
     static String formatDate(GregorianCalendar calendar) {
-        sdf.setTimeZone(calendar.getTimeZone());
-        return sdf.format(calendar.getTime());
+        date_format.setTimeZone(calendar.getTimeZone());
+        return date_format.format(calendar.getTime());
     }
 
     private void updateEditDate() {
