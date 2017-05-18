@@ -37,7 +37,7 @@ public class NoteSaverService extends Service {
 
     @Override
     public IBinder onBind(Intent intent) {
-        return new Starter();
+        return new LocalBinder();
     }
 
     @Override
@@ -45,6 +45,7 @@ public class NoteSaverService extends Service {
         handler.post(new Runnable() {
             @Override
             public void run() {
+                saver.innerClose();
                 NoteSaverService.this.stopSelf();
             }
         });
@@ -58,56 +59,113 @@ public class NoteSaverService extends Service {
         super.onDestroy();
     }
 
-    public class Starter extends Binder {
-        public LocalBinder start(Context context) {
-            startService(new Intent(context, this.getClass()));
-            return new LocalBinder();
-        }
+    public interface OnChangeNotesCallback {
+        void onChangeNotes();
+    }
+
+    public interface OnGetNotesCallback {
+        void onGetNotes(List<Note> notes);
     }
 
     public class LocalBinder extends Binder {
-        public LocalSaver getSaver() {
+        public LocalSaver getSaver(Context context) {
+            startService(new Intent(context, this.getClass()));
             return saver;
         }
     }
 
     public class LocalSaver extends NoteSaver {
-        public LocalSaver(Context context) {
+        LocalSaver(Context context) {
             super(context);
         }
 
-        @Override
-        public boolean insertOrUpdate(final Note note) {
+        public void insertOrUpdateWithCallback(final Note note, final Handler handlerForCallback, final OnChangeNotesCallback callback) {
             handler.post(new Runnable() {
                 @Override
                 public void run() {
                     LocalSaver.super.insertOrUpdate(note);
+                    if (handlerForCallback != null && callback != null) {
+                        handlerForCallback.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                callback.onChangeNotes();
+                            }
+                        });
+                    }
                 }
             });
+        }
+
+        public void insertOrUpdateManyWithCallback(final List<Note> notes, final Handler handlerForCallback, final OnChangeNotesCallback callback) {
+            handler.post(new Runnable() {
+                @Override
+                public void run() {
+                    for (Note note : notes) {
+                        LocalSaver.super.insertOrUpdate(note);
+                    }
+                    if (handlerForCallback != null && callback != null) {
+                        handlerForCallback.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                callback.onChangeNotes();
+                            }
+                        });
+                    }
+                }
+            });
+        }
+
+        @Override
+        public boolean insertOrUpdate(Note note) {
+            insertOrUpdateWithCallback(note, null, null);
             // runnable almost never will be executed immediately;
             return false;
         }
 
-        @Override
-        public int deleteNote(final Note note) {
+        public void deleteNoteWithCallback(final Note note, final Handler handlerForCallback, final OnChangeNotesCallback callback) {
             handler.post(new Runnable() {
                 @Override
                 public void run() {
                     LocalSaver.super.deleteNote(note);
+                    if (handlerForCallback != null && callback != null) {
+                        handlerForCallback.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                callback.onChangeNotes();
+                            }
+                        });
+                    }
                 }
             });
+        }
+
+        @Override
+        public int deleteNote(Note note) {
+            deleteNoteWithCallback(note, null, null);
             // runnable almost never will be executed immediately;
             return 0;
         }
 
-        @Override
-        public void repopulateWith(final List<Note> notes) {
+        public void repopulateWithWithCallback(final List<Note> notes, final Handler handlerForCallback, final OnChangeNotesCallback callback) {
             handler.post(new Runnable() {
                 @Override
                 public void run() {
                     LocalSaver.super.repopulateWith(notes);
+                    if (handlerForCallback != null && callback != null) {
+                        handlerForCallback.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                callback.onChangeNotes();
+                            }
+                        });
+                    }
                 }
             });
+        }
+
+        @Override
+        public void repopulateWith(final List<Note> notes) {
+            repopulateWithWithCallback(notes, null, null);
         }
 
         @Override
@@ -120,19 +178,37 @@ public class NoteSaverService extends Service {
         }
 
         public class Query extends NoteSaver.Query {
-            @Override
-            public List<Note> get() {
-                final List<Note> notes = new ArrayList<>();
+            public void getWithCallback(final Handler handlerForCallback, final OnGetNotesCallback callback) {
                 handler.postAtFrontOfQueue(new Runnable() {
                     @Override
                     public void run() {
-                        notes.addAll(Query.super.get());
+                        final List<Note> notes = Query.super.get();
+                        if (handlerForCallback != null && callback != null) {
+                            handlerForCallback.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    callback.onGetNotes(notes);
+                                }
+                            });
+                        }
                     }
                 });
-                return notes;
+            }
+
+            @Override
+            public List<Note> get() {
+                final List<Note> result = new ArrayList<>();
+                getWithCallback(handler, new OnGetNotesCallback() {
+                    @Override
+                    public void onGetNotes(List<Note> notes) {
+                        result.addAll(notes);
+                    }
+                });
+                return result;
             }
         }
     }
+
 //
 //    private final class ServiceHandler extends Handler {
 //        public ServiceHandler(Looper looper) {
@@ -152,5 +228,5 @@ public class NoteSaverService extends Service {
 //            }
 //            stopSelf(msg.arg1);
 //        }
-}
+//}
 }
