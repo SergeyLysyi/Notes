@@ -2,18 +2,24 @@ package sergeylysyi.notes;
 
 import android.Manifest;
 import android.content.ActivityNotFoundException;
+import android.content.ComponentName;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.IBinder;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -41,6 +47,7 @@ import sergeylysyi.notes.note.ArrayNoteJson;
 import sergeylysyi.notes.note.Note;
 import sergeylysyi.notes.note.NoteListAdapter;
 import sergeylysyi.notes.note.NoteSaver;
+import sergeylysyi.notes.note.NoteSaverService;
 
 import static sergeylysyi.notes.EditActivity.INTENT_KEY_NOTE_COLOR;
 import static sergeylysyi.notes.EditActivity.INTENT_KEY_NOTE_DESCRIPTION;
@@ -48,7 +55,7 @@ import static sergeylysyi.notes.EditActivity.INTENT_KEY_NOTE_INDEX;
 import static sergeylysyi.notes.EditActivity.INTENT_KEY_NOTE_IS_CHANGED;
 import static sergeylysyi.notes.EditActivity.INTENT_KEY_NOTE_TITLE;
 
-public class MainActivity extends AppCompatActivity implements DialogInvoker.ResultListener {
+public class MainActivity extends AppCompatActivity implements DialogInvoker.ResultListener, ServiceConnection {
     public static final String DEFAULT_NOTE_TITLE = "Note";
     public static final String DEFAULT_NOTE_DESCRIPTION = "Hello";
     public static final String CHARSET_DEFAULT = "UTF-8";
@@ -64,7 +71,7 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
     private final NoteSaver.NoteDateField defaultDateFieldPreference = NoteSaver.NoteDateField.edited;
     private List<Note> allNotes = new ArrayList<>();
     private NoteListAdapter adapter;
-    private NoteSaver saver;
+    private NoteSaverService.LocalSaver saver;
     private DialogInvoker dialogInvoker;
     private FiltersHolder filtersHolder;
     private boolean search_on = false;
@@ -75,7 +82,10 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        saver = new NoteSaver(this);
+        deleteDatabase("Notes.db");
+
+        //TODO: rewrite methods for async;
+        bindService(new Intent(this, NoteSaverService.class), this, BIND_AUTO_CREATE);
 
         dialogInvoker = new DialogInvoker(this);
 
@@ -101,16 +111,14 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
                     defaultDateFieldPreference
             );
         }
-
-        resetFilterAndUpdate();
     }
 
     public void launchEdit(Note note) {
-        Intent intent = new Intent(this, EditActivity.class);
+        final Intent intent = new Intent(this, EditActivity.class);
         fillIntentWithNoteInfo(intent, note, allNotes.indexOf(note));
         note.updateOpenDate();
         // save new open date for note to db
-        saver.insertOrUpdate(note);
+        saver.insertOrUpdateWithCallback(note, null, null);
         startActivityForResult(intent, EditActivity.EDIT_NOTE);
     }
 
@@ -119,8 +127,13 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
         builder.setMessage(R.string.dialog_delete_title)
                 .setPositiveButton(R.string.confirm_button, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
-                        saver.deleteNote(note);
-                        adapter.remove(note);
+                        saver.deleteNoteWithCallback(note, new Handler(getMainLooper()),
+                                new NoteSaverService.OnChangeNotesCallback() {
+                                    @Override
+                                    public void onChangeNotes() {
+                                        adapter.remove(note);
+                                    }
+                                });
                     }
                 })
                 .setNegativeButton(R.string.dialog_negative_button, new DialogInterface.OnClickListener() {
@@ -139,8 +152,12 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
             note.setDescription(editedDescription);
         if (!Integer.valueOf(note.getColor()).equals(editedColor))
             note.setColor(editedColor);
-        saver.insertOrUpdate(note);
-        updateNotesFromSaver();
+        saver.insertOrUpdateWithCallback(note, new Handler(getMainLooper()), new NoteSaverService.OnChangeNotesCallback() {
+            @Override
+            public void onChangeNotes() {
+                updateNotesFromSaver();
+            }
+        });
     }
 
     public void launchAdd(View view) {
@@ -173,25 +190,46 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
     }
 
     private void updateNotesFromSaver() {
-        NoteSaver.Query query = saver.new Query().fromFilter(filtersHolder.getCurrentFilterCopy());
+        NoteSaverService.LocalSaver.Query query =
+                (NoteSaverService.LocalSaver.Query) saver.new Query().fromFilter(filtersHolder.getCurrentFilterCopy());
         updateNotesByQuery(query);
     }
 
-    private void updateNotesByQuery(NoteSaver.Query query) {
-        allNotes.removeAll(allNotes);
-        allNotes.addAll(query.get());
-        adapter.notifyDataSetChanged();
+    private void updateNotesByQuery(NoteSaverService.LocalSaver.Query query) {
+        //TODO: use cursor for adapter
+        query.getWithCallback(new Handler(getMainLooper()), new NoteSaverService.OnGetNotesCallback() {
+            @Override
+            public void onGetNotes(List<Note> notes) {
+                allNotes.removeAll(allNotes);
+                allNotes.addAll(notes);
+                adapter.notifyDataSetChanged();
+            }
+        });
     }
 
-    private void updateNotesFromList(List<Note> noteList) {
-        allNotes.removeAll(allNotes);
-        allNotes.addAll(noteList);
-        saver.repopulateWith(allNotes);
-        adapter.notifyDataSetChanged();
+    private void updateNotesFromList(final List<Note> noteList) {
+        saver.repopulateWithWithCallback(allNotes, new Handler(getMainLooper()), new NoteSaverService.OnChangeNotesCallback() {
+            @Override
+            public void onChangeNotes() {
+                allNotes.removeAll(allNotes);
+                allNotes.addAll(noteList);
+                adapter.notifyDataSetChanged();
+            }
+        });
+    }
+
+    private void addNotesFromList(final List<Note> noteList) {
+        saver.insertOrUpdateManyWithCallback(noteList, new Handler(getMainLooper()), new NoteSaverService.OnChangeNotesCallback() {
+            @Override
+            public void onChangeNotes() {
+                allNotes.addAll(noteList);
+                adapter.notifyDataSetChanged();
+            }
+        });
     }
 
     private void searchSubstring(String inTitle, String inDescription) {
-        updateNotesByQuery(saver.new Query().withSubstring(inTitle, inDescription));
+        updateNotesByQuery((NoteSaverService.LocalSaver.Query) saver.new Query().withSubstring(inTitle, inDescription));
     }
 
     private void launchPickFile() {
@@ -305,21 +343,20 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
         if (resultCode == RESULT_OK) {
             switch (requestCode) {
                 case EditActivity.EDIT_NOTE:
-                    int index = data.getIntExtra(INTENT_KEY_NOTE_INDEX, -1);
-                    Note note;
-
-                    try {
-                        note = allNotes.get(index);
-                    } catch (IndexOutOfBoundsException ex) {
-                        // if new note was created
-                        if (index == allNotes.size()) {
-                            note = new Note();
-                            allNotes.add(note);
-                        } else {
-                            throw ex;
-                        }
-                    }
                     if (data.getBooleanExtra(INTENT_KEY_NOTE_IS_CHANGED, false)) {
+                        int index = data.getIntExtra(INTENT_KEY_NOTE_INDEX, -1);
+                        Note note;
+                        try {
+                            note = allNotes.get(index);
+                        } catch (IndexOutOfBoundsException ex) {
+                            // if new note was created
+                            if (index == allNotes.size()) {
+                                note = new Note();
+                                allNotes.add(note);
+                            } else {
+                                throw ex;
+                            }
+                        }
                         editNote(note,
                                 data.getStringExtra(INTENT_KEY_NOTE_TITLE),
                                 data.getStringExtra(INTENT_KEY_NOTE_DESCRIPTION),
@@ -402,11 +439,34 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
                     updateNotesFromSaver();
                 }
                 break;
+            case R.id.action_fill:
+                fillAndUpload();
+                break;
             case R.id.action_manage_filters:
                 dialogInvoker.manageFiltersDialog(filtersHolder.getFilterNames(), this);
                 break;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void fillAndUpload() {
+        int total = 100000;
+        int count = 0;
+        int delimiter = 100;
+        for (int i = 0; i < delimiter; i++) {
+            final List<Note> list = new ArrayList<>(total / delimiter);
+            for (int j = 0; j < total / delimiter; j++) {
+                count++;
+                String title = "Generated Note " + (count);
+                if (count % 2 == 1) {
+                    title = "Odd " + title;
+                }
+                list.add(new Note(title, "Generated Description " + (count), Color.WHITE));
+            }
+            addNotesFromList(list);
+            System.out.println(i + "started");
+        }
+        System.out.println("ALL LAUNCHED");
     }
 
     private void clearSearch() {
@@ -476,4 +536,15 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
         updateNotesFromSaver();
     }
 
+    @Override
+    public void onServiceConnected(ComponentName name, IBinder service) {
+        Log.i(getLocalClassName(), "Service bound");
+        saver = ((NoteSaverService.LocalBinder) service).getSaver(this);
+        resetFilterAndUpdate();
+    }
+
+    @Override
+    public void onServiceDisconnected(ComponentName name) {
+        Log.i(getLocalClassName(), "Service unbound");
+    }
 }
