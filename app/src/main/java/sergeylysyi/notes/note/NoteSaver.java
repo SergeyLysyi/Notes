@@ -44,7 +44,8 @@ public class NoteSaver extends SQLiteOpenHelper {
         db.execSQL(CREATE_TABLE_QUERY);
     }
 
-    private long addNote(SQLiteDatabase db, Note note) {
+    private long addNote(Note note) {
+        SQLiteDatabase db = getWritableDatabase();
         ContentValues values = new ContentValues(3);
         values.put(COLUMN_TITLE, note.getTitle());
         values.put(COLUMN_DESCRIPTION, note.getDescription());
@@ -53,7 +54,7 @@ public class NoteSaver extends SQLiteOpenHelper {
         values.put(COLUMN_EDITED, note.getEdited());
         values.put(COLUMN_VIEWED, note.getViewed());
         long result = db.insert(TABLE_NOTES, null, values);
-        note._id = result;
+        note.setID(result);
         return result;
     }
 
@@ -67,23 +68,14 @@ public class NoteSaver extends SQLiteOpenHelper {
         values.put(COLUMN_EDITED, note.getEdited());
         values.put(COLUMN_VIEWED, note.getViewed());
         String selection = COLUMN_ID + " = ?";
-        String[] selectionArgs = {String.valueOf(note._id)};
-        try {
-            return db.update(TABLE_NOTES, values, selection, selectionArgs);
-        } finally {
-            db.close();
-        }
+        String[] selectionArgs = {String.valueOf(note.getID())};
+        return db.update(TABLE_NOTES, values, selection, selectionArgs);
     }
 
     public boolean insertOrUpdate(Note note) {
         long result = updateNote(note);
         if (result == 0) {
-            SQLiteDatabase db = getWritableDatabase();
-            try {
-                result = addNote(db, note);
-            } finally {
-                db.close();
-            }
+            result = addNote(note);
         }
         return result > 0;
     }
@@ -91,12 +83,9 @@ public class NoteSaver extends SQLiteOpenHelper {
     public int deleteNote(Note note) {
         SQLiteDatabase db = getWritableDatabase();
         String selection = COLUMN_ID + " = ?";
-        String[] selectionArgs = {String.valueOf(note._id)};
-        try {
-            return db.delete(TABLE_NOTES, selection, selectionArgs);
-        } finally {
-            db.close();
-        }
+        String[] selectionArgs = {String.valueOf(note.getID())};
+        System.out.println("DELETE ID:" + selectionArgs[0]);
+        return db.delete(TABLE_NOTES, selection, selectionArgs);
     }
 
     public void repopulateWith(List<Note> notes) {
@@ -104,12 +93,12 @@ public class NoteSaver extends SQLiteOpenHelper {
         db.execSQL(DROP_TABLE_QUERY);
         db.execSQL(CREATE_TABLE_QUERY);
         for (Note note : notes) {
-            addNote(db, note);
+            addNote(note);
         }
     }
 
     public void examine_debug() {
-        SQLiteDatabase db = getReadableDatabase();
+        SQLiteDatabase db = getWritableDatabase();
         String[] columns = {COLUMN_ID, COLUMN_TITLE, COLUMN_DESCRIPTION, COLUMN_CREATED, COLUMN_EDITED, COLUMN_VIEWED};
         Cursor cursor = null;
         try {
@@ -126,13 +115,42 @@ public class NoteSaver extends SQLiteOpenHelper {
             if (cursor != null && !cursor.isClosed()) {
                 cursor.close();
             }
-            db.close();
         }
     }
 
-    private List<Note> getNotes(String sortByColumn, String order,
-                                String titleSubstring, String descriptionSubstring,
-                                String columnForDateFilter, GregorianCalendar afterDate, GregorianCalendar beforeDate) {
+    protected List<Note> getNotes(String sortByColumn, String order,
+                                  String titleSubstring, String descriptionSubstring,
+                                  final String columnForDateFilter, final GregorianCalendar afterDate, final GregorianCalendar beforeDate) {
+
+        List<Note> resultNotes = new ArrayList<>();
+        NoteCursor cursor = getNotesCursor(
+                sortByColumn, order, titleSubstring, descriptionSubstring,
+                columnForDateFilter, afterDate, beforeDate);
+        try {
+            if (cursor.moveToFirst()) {
+                do {
+                    try {
+                        Note note = cursor.getNote();
+                        note.setID(cursor.getID());
+                        resultNotes.add(note);
+                    } catch (ParseException e) {
+                        System.err.println(String.format("ParseException at %d", cursor.getID()));
+                        e.printStackTrace();
+                    }
+                } while (cursor.moveToNext());
+            }
+        } finally {
+            if (cursor != null && !cursor.isClosed()) {
+                cursor.close();
+            }
+        }
+        return resultNotes;
+    }
+
+    protected NoteCursor getNotesCursor(String sortByColumn, String order,
+                                        String titleSubstring, String descriptionSubstring,
+                                        final String columnForDateFilter, final GregorianCalendar afterDate,
+                                        final GregorianCalendar beforeDate) {
         if (sortByColumn != null)
             switch (sortByColumn) {
                 case COLUMN_TITLE:
@@ -162,7 +180,7 @@ public class NoteSaver extends SQLiteOpenHelper {
         }
 
         SQLiteDatabase db = getReadableDatabase();
-        List<Note> notesBeforeDateFilter = new ArrayList<>();
+
         String[] columns = {COLUMN_ID, COLUMN_TITLE, COLUMN_DESCRIPTION, COLUMN_COLOR,
                 COLUMN_CREATED, COLUMN_EDITED, COLUMN_VIEWED};
         String selection = "";
@@ -176,61 +194,29 @@ public class NoteSaver extends SQLiteOpenHelper {
             }
             selection += String.format("%s LIKE \"%%%s%%\"", COLUMN_DESCRIPTION, descriptionSubstring);
         }
-        Cursor cursor = null;
+        if (columnForDateFilter != null) {
+            if (afterDate != null) {
+                if (selection.length() > 0) {
+                    selection += " AND ";
+                }
+                selection += String.format("datetime(\"%s\") <= datetime(%s)",
+                        Note.formatDate(afterDate),
+                        columnForDateFilter);
+            }
+            if (beforeDate != null) {
+                if (selection.length() > 0) {
+                    selection += " AND ";
+                }
+                selection += String.format("datetime(\"%s\") >= datetime(%s)",
+                        Note.formatDate(beforeDate),
+                        columnForDateFilter);
+            }
+        }
         if (selection.length() == 0) {
             selection = null;
         }
-        try {
-            cursor = db.query(TABLE_NOTES, columns, selection, null, null, null, String.format("%s %s", sortByColumn, order));
-            if (cursor.moveToFirst()) {
-                do {
-                    try {
-                        Note note = new Note(cursor.getString(1), cursor.getString(2), cursor.getInt(3),
-                                cursor.getString(4), cursor.getString(5), cursor.getString(6));
-                        note._id = cursor.getInt(0);
-                        notesBeforeDateFilter.add(note);
-                    } catch (ParseException e) {
-                        System.err.println(String.format("ParseException at %s: %d", COLUMN_ID, cursor.getInt(0)));
-                        e.printStackTrace();
-                    }
-                } while (cursor.moveToNext());
-            }
-        } finally {
-            if (cursor != null && !cursor.isClosed()) {
-                cursor.close();
-            }
-            db.close();
-        }
-
-        List<Note> notesDateFiltered = new ArrayList<>(notesBeforeDateFilter);
-        if (columnForDateFilter != null) {
-            for (Note note : notesBeforeDateFilter) {
-                GregorianCalendar c;
-                try {
-                    switch (columnForDateFilter) {
-                        case COLUMN_CREATED:
-                            c = Note.parseDate(note.getCreated());
-                            break;
-                        case COLUMN_EDITED:
-                            c = Note.parseDate(note.getEdited());
-                            break;
-                        case COLUMN_VIEWED:
-                            c = Note.parseDate(note.getViewed());
-                            break;
-                        default:
-                            throw new IllegalArgumentException("columnForDateFilter must be" +
-                                    " from class FILTER_DATE_* constants");
-                    }
-                } catch (IllegalArgumentException | ParseException e) {
-                    e.printStackTrace();
-                    continue;
-                }
-                if (!((afterDate == null || c.after(afterDate)) && (beforeDate == null || c.before(beforeDate)))) {
-                    notesDateFiltered.remove(note);
-                }
-            }
-        }
-        return notesDateFiltered;
+        return new NoteCursor(db.query(
+                TABLE_NOTES, columns, selection, null, null, null, String.format("%s %s", sortByColumn, order)));
     }
 
     @Override
@@ -244,6 +230,7 @@ public class NoteSaver extends SQLiteOpenHelper {
     public enum NoteSortOrder {ascending, descending}
 
     public enum NoteDateField {created, edited, viewed}
+
 
     static public class QueryFilter {
         public NoteSortOrder sortOrder;
@@ -347,6 +334,11 @@ public class NoteSaver extends SQLiteOpenHelper {
 
         public List<Note> get() {
             return NoteSaver.this.getNotes(sortByColumn, sortWithOrder, titleSubstring, descriptionSubstring,
+                    columnForDateFilter, afterDate, beforeDate);
+        }
+
+        public NoteCursor getCursor() {
+            return NoteSaver.this.getNotesCursor(sortByColumn, sortWithOrder, titleSubstring, descriptionSubstring,
                     columnForDateFilter, afterDate, beforeDate);
         }
     }

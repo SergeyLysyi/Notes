@@ -22,12 +22,12 @@ public class Note implements Parcelable {
             return new Note[size];
         }
     };
+    static final long ID_IF_NOT_IN_DB = -1;
     private static final SimpleDateFormat date_format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZZZZZ");
     private static final String DEFAULT_TITLE = "";
     private static final String DEFAULT_DESCRIPTION = "";
-
     //for NoteSaver purposes
-    long _id;
+    private long _id = ID_IF_NOT_IN_DB;
 
     private String title;
     private String description;
@@ -109,6 +109,23 @@ public class Note implements Parcelable {
     public void updateOpenDate() {
         Date currentTime = new Date();
         lastOpenDate.setTime(currentTime);
+    }
+
+    long getID() {
+        return _id;
+    }
+
+    /**
+     * @param id - id to set
+     * @return true if id was assigned, false if note already has id.
+     */
+    boolean setID(long id) {
+        if (_id != ID_IF_NOT_IN_DB) {
+            return false;
+        } else {
+            _id = id;
+            return true;
+        }
     }
 
     public String getTitle() {

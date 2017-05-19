@@ -10,28 +10,25 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.EditText;
 
+import sergeylysyi.notes.note.Note;
+
 import static sergeylysyi.notes.ScrollPalette.INTENT_KEY_COLOR;
 import static sergeylysyi.notes.ScrollPalette.INTENT_KEY_COLOR_TO_EDIT;
 import static sergeylysyi.notes.ScrollPalette.INTENT_KEY_IS_CHANGED;
 
 
 public class EditActivity extends AppCompatActivity {
-    public static final String INTENT_KEY_NOTE_TITLE = "header";
-    public static final String INTENT_KEY_NOTE_DESCRIPTION = "body";
-    public static final String INTENT_KEY_NOTE_COLOR = "color";
-    public static final String INTENT_KEY_NOTE_INDEX = "index";
+    public static final String INTENT_KEY_NOTE = "note";
     public static final String INTENT_KEY_NOTE_IS_CHANGED = "isChanged";
     public static final int EDIT_NOTE = 1;
-    public static final int DEFAULT_COLOR_FOR_INTENT = 0;
-    public static final int DEFAULT_INDEX_FOR_INTENT = -1;
     public static final String SAVED_KEY_CURRENT_COLOR = "current_color";
-
-    private int index;
+    public static final String SAVED_KEY_NOTE = "note";
 
     private EditText headerField;
     private EditText bodyField;
 
     private CurrentColor currentColor;
+    private Note noteToEdit;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,15 +39,15 @@ public class EditActivity extends AppCompatActivity {
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
         Intent intent = getIntent();
-        currentColor = new CurrentColor(intent.getIntExtra(INTENT_KEY_NOTE_COLOR, DEFAULT_COLOR_FOR_INTENT));
-        index = intent.getIntExtra(INTENT_KEY_NOTE_INDEX, DEFAULT_INDEX_FOR_INTENT);
+        noteToEdit = intent.getParcelableExtra(INTENT_KEY_NOTE);
+        currentColor = new CurrentColor(noteToEdit.getColor());
 
         currentColor.addViewForBackgroundChange(findViewById(R.id.colorView));
 
         headerField = (EditText) findViewById(R.id.title);
         bodyField = (EditText) findViewById(R.id.description);
-        headerField.setText(intent.getStringExtra(INTENT_KEY_NOTE_TITLE));
-        bodyField.setText(intent.getStringExtra(INTENT_KEY_NOTE_DESCRIPTION));
+        headerField.setText(noteToEdit.getTitle());
+        bodyField.setText(noteToEdit.getDescription());
 
         findViewById(R.id.colorView).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -98,10 +95,10 @@ public class EditActivity extends AppCompatActivity {
     private void finishWithResult(boolean result) {
         Intent intent = new Intent();
         intent.putExtra(INTENT_KEY_NOTE_IS_CHANGED, result);
-        intent.putExtra(INTENT_KEY_NOTE_TITLE, headerField.getText().toString());
-        intent.putExtra(INTENT_KEY_NOTE_DESCRIPTION, bodyField.getText().toString());
-        intent.putExtra(INTENT_KEY_NOTE_COLOR, currentColor.getColor());
-        intent.putExtra(INTENT_KEY_NOTE_INDEX, index);
+        noteToEdit.setTitle(headerField.getText().toString());
+        noteToEdit.setDescription(bodyField.getText().toString());
+        noteToEdit.setColor(currentColor.getColor());
+        intent.putExtra(INTENT_KEY_NOTE, noteToEdit);
         setResult(RESULT_OK, intent);
         finish();
     }
@@ -123,6 +120,7 @@ public class EditActivity extends AppCompatActivity {
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         outState.putInt(SAVED_KEY_CURRENT_COLOR, currentColor.getColor());
+        outState.putParcelable(SAVED_KEY_NOTE, noteToEdit);
         super.onSaveInstanceState(outState);
     }
 
@@ -132,5 +130,6 @@ public class EditActivity extends AppCompatActivity {
 
         int color = savedInstanceState.getInt(SAVED_KEY_CURRENT_COLOR);
         currentColor.change(color);
+        noteToEdit = savedInstanceState.getParcelable(SAVED_KEY_NOTE);
     }
 }
