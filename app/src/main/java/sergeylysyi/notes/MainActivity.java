@@ -1,6 +1,8 @@
 package sergeylysyi.notes;
 
 import android.Manifest;
+import android.app.Notification;
+import android.app.NotificationManager;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.DialogInterface;
@@ -15,8 +17,11 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Message;
+import android.os.Messenger;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
@@ -28,25 +33,12 @@ import android.view.View;
 import android.widget.ListView;
 import android.widget.Toast;
 
-import com.squareup.moshi.JsonAdapter;
-import com.squareup.moshi.JsonDataException;
-import com.squareup.moshi.JsonEncodingException;
-import com.squareup.moshi.Moshi;
-import com.squareup.moshi.Types;
-
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.lang.reflect.Type;
-import java.nio.charset.Charset;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 import sergeylysyi.notes.Dialogs.DialogInvoker;
-import sergeylysyi.notes.note.ArrayNoteJson;
 import sergeylysyi.notes.note.Note;
-import sergeylysyi.notes.note.NoteCursor;
 import sergeylysyi.notes.note.NoteJsonImportExport;
 import sergeylysyi.notes.note.NoteListAdapter;
 import sergeylysyi.notes.note.NoteSaver;
@@ -55,13 +47,23 @@ import sergeylysyi.notes.note.NoteSaverService;
 import static sergeylysyi.notes.EditActivity.INTENT_KEY_NOTE;
 import static sergeylysyi.notes.EditActivity.INTENT_KEY_NOTE_IS_CHANGED;
 
-public class MainActivity extends AppCompatActivity implements DialogInvoker.ResultListener, ServiceConnection {
+public class MainActivity extends AppCompatActivity implements
+        DialogInvoker.ResultListener,
+        ServiceConnection,
+        Handler.Callback {
     public static final String DEFAULT_NOTE_TITLE = "Note";
     public static final String DEFAULT_NOTE_DESCRIPTION = "Hello";
-    public static final String CHARSET_DEFAULT = "UTF-8";
     public static final String TAG = "MainActivity";
     public static final String KEY_NOTE_IN_CHANGING_STATE = "note in changing state";
     public static final String KEY_SEARCH_STRINGS = "search strings";
+    public static final String DEFAULT_IMPORT_FILE_PATH = "itemlist.ili";
+    public static final String DEFAULT_EXPORT_FILE_PATH = "itemlist.ili";
+    public static final int FILL_TOTAL_AMOUNT = 100000;
+    public static final int FILL_PACK_AMOUNT = 1000;
+    public static final int[] COLORS_FOR_GENERATED = new int[]{Color.YELLOW, Color.RED, Color.BLUE, Color.BLACK, Color.GREEN};
+    public static final String TITLE_PREFIX_FOR_GENERATED = "Generated Note ";
+    public static final String DESCRIPTION_PREFIX_FOR_GENERATED = "Generated Description ";
+    public static final int NOTIFICATION_IMPORT_EXPORT_ID = 101;
     private static final int IMPORT_REQUEST_CODE = 10;
     private static final int EXPORT_REQUEST_CODE = 11;
     private static final int REQUEST_WRITE_STORAGE = 13;
@@ -74,7 +76,7 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
     private final NoteSaver.NoteDateField defaultDateFieldPreference = NoteSaver.NoteDateField.edited;
     private NoteListAdapter adapter;
     private NoteSaverService.LocalSaver saver;
-    private NoteJsonImportExport noteFileOperator;
+    private NoteSaverService.LocalJson noteFileOperator;
     private DialogInvoker dialogInvoker;
     private FiltersHolder filtersHolder;
     private boolean search_on = false;
@@ -82,6 +84,8 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
     private Note noteInChangingState;
     private String searchInTitle;
     private String searchInDescription;
+    private MessageHandlerImport messageHandlerImport = new MessageHandlerImport();
+    private MessageHandlerExport messageHandlerExport = new MessageHandlerExport();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -90,7 +94,6 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
 
 //        deleteDatabase("Notes.db");
 
-        //TODO: rewrite methods for async;
         startService(new Intent(this, NoteSaverService.class));
 
         dialogInvoker = new DialogInvoker(this);
@@ -151,7 +154,7 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
                         saver.deleteNoteWithCallback(note, new Handler(getMainLooper()),
                                 new NoteSaverService.OnChangeNotesCallback() {
                                     @Override
-                                    public void onChangeNotes() {
+                                    public void onChangeNotes(long leftToAdd) {
                                         updateNotesFromSaver();
                                     }
                                 });
@@ -173,9 +176,11 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
             originalNote.setDescription(changedNote.getDescription());
         if (!Integer.valueOf(originalNote.getColor()).equals(changedNote.getColor()))
             originalNote.setColor(changedNote.getColor());
+        if (!originalNote.getImageUrl().equals(changedNote.getImageUrl()))
+            originalNote.setImageURL(changedNote.getImageUrl());
         saver.insertOrUpdateWithCallback(originalNote, new Handler(getMainLooper()), new NoteSaverService.OnChangeNotesCallback() {
             @Override
-            public void onChangeNotes() {
+            public void onChangeNotes(long leftToAdd) {
                 updateNotesFromSaver();
             }
         });
@@ -215,21 +220,13 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
         query.fromFilter(filtersHolder.getCurrentFilterCopy()).withSubstring(searchInTitle, searchInDescription);
         //TODO: get cursor async
         adapter.updateData(query.getCursor());
-    }
-
-    private void updateNotesFromList(final List<Note> noteList) {
-        saver.repopulateWithWithCallback(noteList, new Handler(getMainLooper()), new NoteSaverService.OnChangeNotesCallback() {
-            @Override
-            public void onChangeNotes() {
-                updateNotesFromSaver();
-            }
-        });
+        Log.i(TAG, "updateNotesByQuery: adapter.size() = " + adapter.getCount());
     }
 
     private void addNotesFromList(final List<Note> noteList) {
         saver.insertOrUpdateManyWithCallback(noteList, new Handler(getMainLooper()), new NoteSaverService.OnChangeNotesCallback() {
             @Override
-            public void onChangeNotes() {
+            public void onChangeNotes(long leftToAdd) {
                 updateNotesFromSaver();
             }
         });
@@ -245,10 +242,14 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
         Intent theIntent = new Intent(Intent.ACTION_PICK);
         theIntent.setData(Uri.fromFile(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)));
         try {
-            startActivityForResult(theIntent, IMPORT_REQUEST_CODE);
-        } catch (ActivityNotFoundException e) {
-            Toast.makeText(this, R.string.import_no_file_manager, Toast.LENGTH_LONG).show();
-            e.printStackTrace();
+            try {
+                startActivityForResult(theIntent, IMPORT_REQUEST_CODE);
+            } catch (ActivityNotFoundException e) {
+                Toast.makeText(this, R.string.import_no_file_manager, Toast.LENGTH_LONG).show();
+                theIntent = new Intent();
+                theIntent.setData(Uri.fromFile(Environment.getExternalStoragePublicDirectory(DEFAULT_IMPORT_FILE_PATH)));
+                onActivityResult(IMPORT_REQUEST_CODE, RESULT_OK, theIntent);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -259,10 +260,14 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
         Intent theIntent = new Intent(Intent.ACTION_PICK);
         theIntent.setData(Uri.fromFile(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)));
         try {
-            startActivityForResult(theIntent, EXPORT_REQUEST_CODE);
-        } catch (ActivityNotFoundException e) {
-            Toast.makeText(this, R.string.export_no_file_manager, Toast.LENGTH_LONG).show();
-            e.printStackTrace();
+            try {
+                startActivityForResult(theIntent, EXPORT_REQUEST_CODE);
+            } catch (ActivityNotFoundException e) {
+                Toast.makeText(this, R.string.export_no_file_manager, Toast.LENGTH_LONG).show();
+                theIntent = new Intent();
+                theIntent.setData(Uri.fromFile(Environment.getExternalStoragePublicDirectory(DEFAULT_EXPORT_FILE_PATH)));
+                onActivityResult(EXPORT_REQUEST_CODE, RESULT_OK, theIntent);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -272,7 +277,7 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
         if (!hasIOExternalPermission()) {
             return;
         }
-        noteFileOperator.exportToFile(filename, adapter.getNotes());
+        noteFileOperator.exportToFile(filename, new Messenger(new Handler(this)));
     }
 
     private void importNotesFromFile(String filename) {
@@ -280,7 +285,7 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
         if (!hasIOExternalPermission()) {
             return;
         }
-        noteFileOperator.importFromFile(filename);
+        noteFileOperator.importFromFile(filename, new Messenger(new Handler(this)));
     }
 
     private boolean hasIOExternalPermission() {
@@ -300,9 +305,15 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
             switch (requestCode) {
                 case EditActivity.EDIT_NOTE:
                     if (data.getBooleanExtra(INTENT_KEY_NOTE_IS_CHANGED, false)) {
-                        Note oldNote = noteInChangingState;
-                        Note newNote = data.getParcelableExtra(INTENT_KEY_NOTE);
-                        editNote(oldNote, newNote);
+                        final Note oldNote = noteInChangingState;
+                        final Note newNote = data.getParcelableExtra(INTENT_KEY_NOTE);
+                        // service with saver will be bound at end of queue and might not exist right now
+                        new Handler().post(new Runnable() {
+                            @Override
+                            public void run() {
+                                editNote(oldNote, newNote);
+                            }
+                        });
                     }
                     break;
 
@@ -390,23 +401,31 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
     }
 
     private void fillAndUpload() {
-        int total = 3000;
-        int count = 0;
-        int delimiter = 1;
-        for (int i = 0; i < delimiter; i++) {
-            final List<Note> list = new ArrayList<>(total / delimiter);
-            for (int j = 0; j < total / delimiter; j++) {
-                count++;
-                String title = "Generated Note " + (count);
-                if (count % 2 == 1) {
-                    title = "Odd " + title;
-                }
-                list.add(new Note(title, "Generated Description " + (count), Color.WHITE));
+        Random r = new Random();
+        for (int i = 1; i <= FILL_TOTAL_AMOUNT; i++) {
+            final List<Note> list = new ArrayList<>(FILL_PACK_AMOUNT);
+            for (int j = 1; j <= FILL_PACK_AMOUNT; j++) {
+                list.add(new Note(
+                        getGeneratedTitle(i),
+                        getGeneratedDescription(i),
+                        getRandomColor(r)));
+                i++;
             }
+            Log.i(TAG, "fillAndUpload: launched to index " + i);
             addNotesFromList(list);
-            System.out.println(i + "started");
         }
-        System.out.println("ALL LAUNCHED");
+    }
+
+    private String getGeneratedTitle(int number) {
+        return TITLE_PREFIX_FOR_GENERATED + number;
+    }
+
+    private String getGeneratedDescription(int number) {
+        return DESCRIPTION_PREFIX_FOR_GENERATED + number;
+    }
+
+    private int getRandomColor(Random r) {
+        return COLORS_FOR_GENERATED[r.nextInt(COLORS_FOR_GENERATED.length)];
     }
 
     private void clearSearch() {
@@ -430,14 +449,12 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
         }
         if (searchMenuItem != null) {
             searchMenuItem.setIcon(searchIcon);
-            Log.i(TAG, "updateSearchIcon: search_on" + search_on);
         }
     }
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        Log.i(TAG, "onSaveInstanceState: save");
         outState.putParcelable(KEY_NOTE_IN_CHANGING_STATE, noteInChangingState);
         outState.putStringArray(KEY_SEARCH_STRINGS, new String[]{searchInTitle, searchInDescription});
     }
@@ -511,8 +528,14 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
     @Override
     public void onServiceConnected(ComponentName name, IBinder service) {
         Log.i(getLocalClassName(), "Service bound");
-        NoteSaverService.LocalBinder binder =  ((NoteSaverService.LocalBinder) service);
-        saver = binder.getSaver(this);
+        NoteSaverService.LocalBinder binder = ((NoteSaverService.LocalBinder) service);
+        saver = binder.getSaver();
+        saver.setAllFinishedCallback(new Handler(), new NoteSaverService.OnChangeNotesCallback() {
+            @Override
+            public void onChangeNotes(long leftToAdd) {
+                updateNotesFromSaver();
+            }
+        });
         noteFileOperator = binder.getFileOperator();
         updateNotesFromSaver();
     }
@@ -520,5 +543,77 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
     @Override
     public void onServiceDisconnected(ComponentName name) {
         Log.i(getLocalClassName(), "Service unbound");
+    }
+
+    @Override
+    public boolean handleMessage(Message msg) {
+        if (noteFileOperator == null || !noteFileOperator.isMessageFromJsonSender(msg))
+            return false;
+        noteFileOperator.translateMessage(
+                msg,
+                messageHandlerImport,
+                messageHandlerImport,
+                messageHandlerExport,
+                messageHandlerExport);
+        return true;
+    }
+
+    private class MessageHandlerImport implements
+            NoteJsonImportExport.ProgressCallback,
+            NoteJsonImportExport.FinishCallback {
+
+        @Override
+        public void onProgress(double percentDone) {
+            updateNotesFromSaver();
+            Notification not = new NotificationCompat.Builder(MainActivity.this)
+                    .setSmallIcon(android.R.drawable.btn_star)
+                    .setContentTitle(getString(R.string.app_name))
+                    .setContentText(getString(R.string.notification_import_progress, percentDone)).build();
+            ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).notify(NOTIFICATION_IMPORT_EXPORT_ID, not);
+        }
+
+        @Override
+        public void onFinish(boolean isSucceed) {
+            String result;
+            if (isSucceed) {
+                updateNotesFromSaver();
+                result = getString(R.string.notification_success);
+            } else {
+                result = getString(R.string.notification_failed);
+            }
+            Notification not = new NotificationCompat.Builder(MainActivity.this)
+                    .setSmallIcon(android.R.drawable.btn_star)
+                    .setContentTitle(getString(R.string.app_name))
+                    .setContentText(getString(R.string.notification_import_finish, result)).build();
+            ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).notify(NOTIFICATION_IMPORT_EXPORT_ID, not);
+        }
+    }
+
+    private class MessageHandlerExport implements
+            NoteJsonImportExport.ProgressCallback,
+            NoteJsonImportExport.FinishCallback {
+
+        @Override
+        public void onProgress(double percentDone) {
+            Notification not = new NotificationCompat.Builder(MainActivity.this)
+                    .setSmallIcon(android.R.drawable.btn_star)
+                    .setContentTitle(getString(R.string.app_name))
+                    .setContentText(getString(R.string.notification_export_progress, percentDone)).build();
+            ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).notify(NOTIFICATION_IMPORT_EXPORT_ID, not);
+        }
+
+        @Override
+        public void onFinish(boolean isSucceed) {
+            String result;
+            if (isSucceed)
+                result = getString(R.string.notification_success);
+            else
+                result = getString(R.string.notification_failed);
+            Notification not = new NotificationCompat.Builder(MainActivity.this)
+                    .setSmallIcon(android.R.drawable.btn_star)
+                    .setContentTitle(getString(R.string.app_name))
+                    .setContentText(getString(R.string.notification_export_finish, result)).build();
+            ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).notify(NOTIFICATION_IMPORT_EXPORT_ID, not);
+        }
     }
 }

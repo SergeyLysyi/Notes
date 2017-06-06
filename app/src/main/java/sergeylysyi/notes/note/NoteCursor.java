@@ -15,8 +15,9 @@ public class NoteCursor implements Closeable {
 
     public Note getNote() throws ParseException {
         Note note = new Note(cursor.getString(1), cursor.getString(2), cursor.getInt(3),
-                cursor.getString(4), cursor.getString(5), cursor.getString(6));
+                cursor.getString(5), cursor.getString(6), cursor.getString(7));
         note.setID(getID());
+        note.setImageURL(cursor.getString(4));
         return note;
     }
 

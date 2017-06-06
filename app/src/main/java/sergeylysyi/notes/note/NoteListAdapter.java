@@ -55,10 +55,6 @@ public class NoteListAdapter extends ArrayAdapter {
         }
     }
 
-    public long getNoteID(Note note) {
-        return note.getID();
-    }
-
     @Override
     public int getCount() {
         int number;
@@ -72,10 +68,6 @@ public class NoteListAdapter extends ArrayAdapter {
 
     public List<Note> getNotes() {
         return Collections.unmodifiableList(notes);
-    }
-
-    public int size() {
-        return notes.size();
     }
 
     @Override
