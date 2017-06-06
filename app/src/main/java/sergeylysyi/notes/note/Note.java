@@ -2,6 +2,7 @@ package sergeylysyi.notes.note;
 
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.util.Log;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -22,6 +23,7 @@ public class Note implements Parcelable {
             return new Note[size];
         }
     };
+    public static final String TAG = "Note";
     static final long ID_IF_NOT_IN_DB = -1;
     private static final SimpleDateFormat date_format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZZZZZ");
     private static final String DEFAULT_TITLE = "";
@@ -32,26 +34,28 @@ public class Note implements Parcelable {
     private String title;
     private String description;
     private int color;
+    private String imageUrl;
     private GregorianCalendar creationDate;
     private GregorianCalendar lastEditDate;
     private GregorianCalendar lastOpenDate;
 
     public Note() {
-        this(DEFAULT_TITLE, DEFAULT_DESCRIPTION, 0);
+        this(DEFAULT_TITLE, DEFAULT_DESCRIPTION, 0, "");
     }
 
-    public Note(String title, String description, int color) {
+    public Note(String title, String description, int color, String imageUrl) {
         this.title = title;
         this.description = description;
         this.color = color;
+        this.imageUrl = imageUrl;
         creationDate = new GregorianCalendar(TimeZone.getDefault());
         lastEditDate = creationDate;
         lastOpenDate = creationDate;
     }
 
-    Note(String title, String description, int color,
+    Note(String title, String description, int color, String imageUrl,
          String creationDate, String lastEditDate, String lastOpenDate) throws ParseException {
-        this(title, description, color);
+        this(title, description, color, imageUrl);
         this.creationDate = parseDate(creationDate);
         this.lastEditDate = parseDate(lastEditDate);
         this.lastOpenDate = parseDate(lastOpenDate);
@@ -61,6 +65,7 @@ public class Note implements Parcelable {
         title = in.readString();
         description = in.readString();
         color = in.readInt();
+        imageUrl = in.readString();
         String creationTimeZoneID = in.readString();
         String editTimeZoneID = in.readString();
         String openTimeZoneID = in.readString();
@@ -84,7 +89,14 @@ public class Note implements Parcelable {
      * @throws ParseException - if the beginning of the specified string cannot be parsed.
      */
     static GregorianCalendar parseDate(String date) throws ParseException {
-        Date d = date_format.parse(date);
+        Date d;
+        try {
+            d = date_format.parse(date);
+        } catch (ParseException e) {
+            // trying to catch mystery error where string is ok, but exception occurs
+            Log.e(TAG, "parseDate: PARSE EXCEPTION ON DATE >\"" + date + "\"<", e);
+            d = date_format.parse(date);
+        }
         GregorianCalendar calendar = new GregorianCalendar();
         calendar.setTime(d);
         return calendar;
@@ -98,7 +110,12 @@ public class Note implements Parcelable {
      */
     static String formatDate(GregorianCalendar calendar) {
         date_format.setTimeZone(calendar.getTimeZone());
-        return date_format.format(calendar.getTime());
+        try {
+            return date_format.format(calendar.getTime());
+        } catch (ArrayIndexOutOfBoundsException e) {
+            Log.d(TAG, "formatDate: calendar = " + calendar);
+            throw e;
+        }
     }
 
     private void updateEditDate() {
@@ -135,6 +152,15 @@ public class Note implements Parcelable {
     public void setTitle(String newHeader) {
         this.title = newHeader;
         updateEditDate();
+    }
+
+    public void setImageURL(String imageUrl) {
+        this.imageUrl = imageUrl;
+        updateEditDate();
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
     }
 
     public String getDescription() {
@@ -177,6 +203,7 @@ public class Note implements Parcelable {
         dest.writeString(title);
         dest.writeString(description);
         dest.writeInt(color);
+        dest.writeString(imageUrl);
         dest.writeString(creationDate.getTimeZone().getID());
         dest.writeString(lastEditDate.getTimeZone().getID());
         dest.writeString(lastOpenDate.getTimeZone().getID());

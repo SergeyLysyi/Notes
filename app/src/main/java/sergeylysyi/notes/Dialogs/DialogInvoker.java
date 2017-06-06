@@ -108,7 +108,12 @@ public class DialogInvoker {
         final Dialog d = new AlertDialog.Builder(context, 0)
                 .setTitle(R.string.dialog_search_title)
                 .setView(v)
-                .setNegativeButton(R.string.dialog_negative_button, null)
+                .setNegativeButton(R.string.dialog_negative_button, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        listener.onSearchCancel();
+                    }
+                })
                 .setPositiveButton(R.string.dialog_search_positive_button,
                         new SearchClickListener(
                                 (EditText) v.findViewById(R.id.search_field_title),
@@ -133,14 +138,20 @@ public class DialogInvoker {
         dateField[0] = currentFilter.dateField;
         final AtomicBoolean afterSet = new AtomicBoolean(false);
         final AtomicBoolean beforeSet = new AtomicBoolean(false);
+        final GregorianCalendar after;
+        final GregorianCalendar before;
         if (currentFilter.after != null) {
             afterSet.set(true);
+            after = currentFilter.after;
+        } else {
+            after = new GregorianCalendar();
         }
         if (currentFilter.before != null) {
             beforeSet.set(true);
+            before = currentFilter.before;
+        } else {
+            before = new GregorianCalendar();
         }
-        final GregorianCalendar after = new GregorianCalendar();
-        final GregorianCalendar before = new GregorianCalendar();
 
         final View v = inflater.inflate(R.layout.filter_layout, null);
         final Dialog d = new AlertDialog.Builder(context, 0)
@@ -177,29 +188,45 @@ public class DialogInvoker {
                     }
                 }));
 
+        final TextView timeAfterView = (TextView) v.findViewById(R.id.time_after_filter);
+        final TextView dateAfterView = (TextView) v.findViewById(R.id.date_after_filter);
+        final TextView timeBeforeView = (TextView) v.findViewById(R.id.time_before_filter);
+        final TextView dateBeforeView = (TextView) v.findViewById(R.id.date_before_filter);
+
         Callback onAfterChange = new Callback() {
             @Override
             public void call(Object result) {
-                afterSet.set(true);
+                if (result != null)
+                    afterSet.set(true);
+                if (afterSet.get()) {
+                    timeAfterView.setText(timeFormat.format(after.getTime()));
+                    dateAfterView.setText(dateFormat.format(after.getTime()));
+                }
             }
         };
-
         Callback onBeforeChange = new Callback() {
             @Override
             public void call(Object result) {
-                beforeSet.set(true);
+                if (result != null)
+                    beforeSet.set(true);
+                if (beforeSet.get()) {
+                    timeBeforeView.setText(timeFormat.format(before.getTime()));
+                    dateBeforeView.setText(dateFormat.format(before.getTime()));
+                }
             }
         };
+        // preset time from argument
+        onAfterChange.call(null);
+        onBeforeChange.call(null);
 
-        v.findViewById(R.id.time_after_filter).setOnClickListener(
-                new TimePickerDialog(context, timeFormat, after, afterSet, onAfterChange));
-        v.findViewById(R.id.date_after_filter).setOnClickListener(
-                new DatePickerDialog(context, dateFormat, after, afterSet, onAfterChange));
-
-        v.findViewById(R.id.time_before_filter).setOnClickListener(
-                new TimePickerDialog(context, timeFormat, before, beforeSet, onBeforeChange));
-        v.findViewById(R.id.date_before_filter).setOnClickListener(
-                new DatePickerDialog(context, dateFormat, before, beforeSet, onBeforeChange));
+        timeAfterView.setOnClickListener(
+                new TimePickerDialog(context, after, onAfterChange));
+        dateAfterView.setOnClickListener(
+                new DatePickerDialog(context, after, onAfterChange));
+        timeBeforeView.setOnClickListener(
+                new TimePickerDialog(context, before, onBeforeChange));
+        dateBeforeView.setOnClickListener(
+                new DatePickerDialog(context, before, onBeforeChange));
     }
 
     public void manageFiltersDialog(final String[] entriesNames, final ManageFiltersResultListener listener) {
@@ -234,8 +261,8 @@ public class DialogInvoker {
                 .setItems(localNames, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        listener.onApplyFilterEntry(entriesNames[which]);
                         editedOrDeletedCall.call(null);
+                        listener.onApplyFilterEntry(entriesNames[which]);
                     }
                 })
                 .create();
@@ -253,8 +280,8 @@ public class DialogInvoker {
                                     @Override
                                     public void call(Object result) {
                                         d.dismiss();
-                                        listener.onAddFilterEntry((String) result);
                                         editedOrDeletedCall.call(null);
+                                        listener.onAddFilterEntry((String) result);
                                     }
                                 }).show();
                             }

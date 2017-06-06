@@ -17,6 +17,7 @@ public class NoteSaver extends SQLiteOpenHelper {
     private static final String COLUMN_TITLE = "Title";
     private static final String COLUMN_DESCRIPTION = "Description";
     private static final String COLUMN_COLOR = "Color";
+    private static final String COLUMN_IMAGE_URL = "ImageURL";
     private static final String COLUMN_CREATED = "Created";
     private static final String COLUMN_EDITED = "Edited";
     private static final String COLUMN_VIEWED = "Opened";
@@ -29,9 +30,9 @@ public class NoteSaver extends SQLiteOpenHelper {
     private static final String DEFAULT_SORT_COLUMN = COLUMN_ID;
     private static final String DEFAULT_SORT_ORDER = SORT_ORDER_ASCENDING;
     private static final String CREATE_TABLE_QUERY = String.format(
-            "CREATE TABLE %s (%s INTEGER PRIMARY KEY AUTOINCREMENT, %s TEXT, %s TEXT, %s INTEGER, " +
+            "CREATE TABLE %s (%s INTEGER PRIMARY KEY AUTOINCREMENT, %s TEXT, %s TEXT, %s INTEGER, %s TEXT," +
                     "%s TEXT, %s TEXT, %s TEXT)",
-            TABLE_NOTES, COLUMN_ID, COLUMN_TITLE, COLUMN_DESCRIPTION, COLUMN_COLOR,
+            TABLE_NOTES, COLUMN_ID, COLUMN_TITLE, COLUMN_DESCRIPTION, COLUMN_COLOR, COLUMN_IMAGE_URL,
             COLUMN_CREATED, COLUMN_EDITED, COLUMN_VIEWED);
     private static final String DROP_TABLE_QUERY = String.format("DROP TABLE IF EXISTS %s", TABLE_NOTES);
 
@@ -50,6 +51,7 @@ public class NoteSaver extends SQLiteOpenHelper {
         values.put(COLUMN_TITLE, note.getTitle());
         values.put(COLUMN_DESCRIPTION, note.getDescription());
         values.put(COLUMN_COLOR, note.getColor());
+        values.put(COLUMN_IMAGE_URL, note.getImageUrl());
         values.put(COLUMN_CREATED, note.getCreated());
         values.put(COLUMN_EDITED, note.getEdited());
         values.put(COLUMN_VIEWED, note.getViewed());
@@ -64,6 +66,7 @@ public class NoteSaver extends SQLiteOpenHelper {
         values.put(COLUMN_TITLE, note.getTitle());
         values.put(COLUMN_DESCRIPTION, note.getDescription());
         values.put(COLUMN_COLOR, note.getColor());
+        values.put(COLUMN_IMAGE_URL, note.getImageUrl());
         values.put(COLUMN_CREATED, note.getCreated());
         values.put(COLUMN_EDITED, note.getEdited());
         values.put(COLUMN_VIEWED, note.getViewed());
@@ -84,17 +87,16 @@ public class NoteSaver extends SQLiteOpenHelper {
         SQLiteDatabase db = getWritableDatabase();
         String selection = COLUMN_ID + " = ?";
         String[] selectionArgs = {String.valueOf(note.getID())};
-        System.out.println("DELETE ID:" + selectionArgs[0]);
         return db.delete(TABLE_NOTES, selection, selectionArgs);
     }
 
-    public void repopulateWith(List<Note> notes) {
+    public void clear() {
         SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
         db.execSQL(DROP_TABLE_QUERY);
         db.execSQL(CREATE_TABLE_QUERY);
-        for (Note note : notes) {
-            addNote(note);
-        }
+        db.setTransactionSuccessful();
+        db.endTransaction();
     }
 
     public void examine_debug() {
@@ -181,7 +183,7 @@ public class NoteSaver extends SQLiteOpenHelper {
 
         SQLiteDatabase db = getReadableDatabase();
 
-        String[] columns = {COLUMN_ID, COLUMN_TITLE, COLUMN_DESCRIPTION, COLUMN_COLOR,
+        String[] columns = {COLUMN_ID, COLUMN_TITLE, COLUMN_DESCRIPTION, COLUMN_COLOR, COLUMN_IMAGE_URL,
                 COLUMN_CREATED, COLUMN_EDITED, COLUMN_VIEWED};
         String selection = "";
         //TODO: protect from injecting
