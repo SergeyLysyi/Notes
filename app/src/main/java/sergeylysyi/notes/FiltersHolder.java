@@ -31,7 +31,6 @@ public class FiltersHolder {
     private NoteSaver.QueryFilter defaultFilter;
     private NoteSaver.QueryFilter currentFilter;
     private String[] names = new String[0];
-    ;
 
     private FiltersHolder() {
     }

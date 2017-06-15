@@ -25,11 +25,13 @@ public class Note implements Parcelable {
     };
     public static final String TAG = "Note";
     static final long ID_IF_NOT_IN_DB = -1;
+    static final long ID_IF_NOT_ON_SERVER = -1;
     private static final SimpleDateFormat date_format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZZZZZ");
     private static final String DEFAULT_TITLE = "";
     private static final String DEFAULT_DESCRIPTION = "";
     //for NoteSaver purposes
     private long _id = ID_IF_NOT_IN_DB;
+    private long _sid = ID_IF_NOT_ON_SERVER;
 
     private String title;
     private String description;
@@ -128,21 +130,39 @@ public class Note implements Parcelable {
         lastOpenDate.setTime(currentTime);
     }
 
-    long getID() {
+    /**
+     * @return long if id was set or null if not.
+     */
+    public Long getID() {
+        if (_id == ID_IF_NOT_IN_DB)
+            return null;
         return _id;
     }
 
     /**
-     * @param id - id to set
-     * @return true if id was assigned, false if note already has id.
+     * @param id id to set.
+     * @return id of note (might differ from argument if note already has id).
      */
-    boolean setID(long id) {
-        if (_id != ID_IF_NOT_IN_DB) {
-            return false;
-        } else {
-            _id = id;
-            return true;
-        }
+    public long setID(long id) {
+        Long noteID;
+        if ((noteID = getID()) != null)
+            return noteID;
+        else
+            return _id = id;
+    }
+
+    /**
+     * @return long if id was set or null if not.
+     */
+    public Long getServerID() {
+        if (_sid == ID_IF_NOT_ON_SERVER)
+            return null;
+        else
+            return _sid;
+    }
+
+    public void setServerID(long id) {
+        _sid = id;
     }
 
     public String getTitle() {

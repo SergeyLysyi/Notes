@@ -80,7 +80,7 @@ public class NoteSaver extends SQLiteOpenHelper {
         if (result == 0) {
             result = addNote(note);
         }
-        return result > 0;
+        return result <= 0;
     }
 
     public int deleteNote(Note note) {

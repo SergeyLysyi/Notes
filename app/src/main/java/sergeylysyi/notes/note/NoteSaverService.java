@@ -278,7 +278,7 @@ public class NoteSaverService extends Service {
         public boolean insertOrUpdate(Note note) {
             insertOrUpdateWithCallback(note, null, null);
             // runnable almost never will be executed immediately, so return value is false;
-            return false;
+            return true;
         }
 
         public void deleteNoteWithCallback(final Note note, final Handler handlerForCallback, final OnChangeNotesCallback callback) {

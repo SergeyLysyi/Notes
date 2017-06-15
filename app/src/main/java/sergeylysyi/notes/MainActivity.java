@@ -43,6 +43,10 @@ import sergeylysyi.notes.note.NoteJsonImportExport;
 import sergeylysyi.notes.note.NoteListAdapter;
 import sergeylysyi.notes.note.NoteSaver;
 import sergeylysyi.notes.note.NoteSaverService;
+import sergeylysyi.notes.note.RemoteNotes.OnError;
+import sergeylysyi.notes.note.RemoteNotes.OnSuccess;
+import sergeylysyi.notes.note.RemoteNotes.RESTClient;
+import sergeylysyi.notes.note.RemoteNotes.User;
 
 import static sergeylysyi.notes.EditActivity.INTENT_KEY_NOTE;
 import static sergeylysyi.notes.EditActivity.INTENT_KEY_NOTE_IS_CHANGED;
@@ -134,6 +138,24 @@ public class MainActivity extends AppCompatActivity implements
                     defaultDateFieldPreference
             );
         }
+
+
+        final String URL = "https://notesbackend-yufimtsev.rhcloud.com/";
+        Note note = new Note("note", "note description", 777);
+        note.setID(13290);
+        User user1 = new User(6666);
+        final RESTClient rc = new RESTClient(URL, user1);
+        rc.add(note, new OnSuccess<Integer>() {
+            @Override
+            public void success(Integer data) {
+                Log.i(TAG, "note added with index " + data.toString());
+            }
+        }, new OnError() {
+            @Override
+            public void error(Throwable e) {
+                Log.e(TAG, "error occurred", e);
+            }
+        });
     }
 
     public void launchEdit(Note note) {

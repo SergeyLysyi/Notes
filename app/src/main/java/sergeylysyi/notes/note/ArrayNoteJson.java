@@ -101,7 +101,7 @@ public class ArrayNoteJson {
         String edited;
         String viewed;
 
-        NoteJson(Note note) {
+        public NoteJson(Note note) {
             title = note.getTitle();
             description = note.getDescription();
             color = String.format(COLOR_FORMAT, note.getColor());
@@ -111,11 +111,26 @@ public class ArrayNoteJson {
             viewed = note.getViewed();
         }
 
-        Note getNote() throws ParseException {
+        public Note getNote() throws ParseException {
             Note note = new Note(title, description, Color.parseColor(color), created, edited, viewed);
             note.setImageURL(imageUrl);
             return note;
         }
     }
 
+    public static class NoteJsonServerResponse extends NoteJson {
+        String id;
+
+        NoteJsonServerResponse(Note note) {
+            super(note);
+        }
+
+        @Override
+        public Note getNote() throws ParseException {
+            Note note = super.getNote();
+            assert id != null;
+            note.setServerID(Integer.parseInt(id));
+            return note;
+        }
+    }
 }

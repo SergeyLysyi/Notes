@@ -8,7 +8,7 @@ import android.widget.Button;
 
 import java.util.*;
 
-public class ColorButton extends Button {
+public class ColorButton extends android.support.v7.widget.AppCompatButton {
     static private final int HSV_ARRAY_SIZE = 3;
     static private final float HUE_MAX_VALUE = 359.7f;
     static private final float EPSILON = 0.1f;
