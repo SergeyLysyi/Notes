@@ -6,6 +6,7 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.provider.BaseColumns;
+import android.util.Log;
 
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -14,6 +15,8 @@ import java.util.List;
 
 
 public class NoteSaver extends SQLiteOpenHelper {
+    private static final String COLUMN_ID = BaseColumns._ID;
+    private static final String COLUMN_SERVER_ID = "ServerID";
     private static final String COLUMN_TITLE = "Title";
     private static final String COLUMN_DESCRIPTION = "Description";
     private static final String COLUMN_COLOR = "Color";
@@ -26,15 +29,15 @@ public class NoteSaver extends SQLiteOpenHelper {
     private static final String DB_NAME = "Notes.db";
     private static final int VERSION = 1;
     private static final String TABLE_NOTES = "Notes";
-    private static final String COLUMN_ID = BaseColumns._ID;
     private static final String DEFAULT_SORT_COLUMN = COLUMN_ID;
     private static final String DEFAULT_SORT_ORDER = SORT_ORDER_ASCENDING;
     private static final String CREATE_TABLE_QUERY = String.format(
-            "CREATE TABLE %s (%s INTEGER PRIMARY KEY AUTOINCREMENT, %s TEXT, %s TEXT, %s INTEGER, %s TEXT," +
-                    "%s TEXT, %s TEXT, %s TEXT)",
-            TABLE_NOTES, COLUMN_ID, COLUMN_TITLE, COLUMN_DESCRIPTION, COLUMN_COLOR, COLUMN_IMAGE_URL,
+            "CREATE TABLE %s (%s INTEGER PRIMARY KEY AUTOINCREMENT, %s INTEGER, %s TEXT, %s TEXT, %s INTEGER, %s TEXT," +
+                    " %s TEXT, %s TEXT, %s TEXT)",
+            TABLE_NOTES, COLUMN_ID, COLUMN_SERVER_ID, COLUMN_TITLE, COLUMN_DESCRIPTION, COLUMN_COLOR, COLUMN_IMAGE_URL,
             COLUMN_CREATED, COLUMN_EDITED, COLUMN_VIEWED);
     private static final String DROP_TABLE_QUERY = String.format("DROP TABLE IF EXISTS %s", TABLE_NOTES);
+    public static final String TAG = NoteSaver.class.getName();
 
     public NoteSaver(Context context) {
         super(context, DB_NAME, null, VERSION);
@@ -47,14 +50,7 @@ public class NoteSaver extends SQLiteOpenHelper {
 
     private long addNote(Note note) {
         SQLiteDatabase db = getWritableDatabase();
-        ContentValues values = new ContentValues(3);
-        values.put(COLUMN_TITLE, note.getTitle());
-        values.put(COLUMN_DESCRIPTION, note.getDescription());
-        values.put(COLUMN_COLOR, note.getColor());
-        values.put(COLUMN_IMAGE_URL, note.getImageUrl());
-        values.put(COLUMN_CREATED, note.getCreated());
-        values.put(COLUMN_EDITED, note.getEdited());
-        values.put(COLUMN_VIEWED, note.getViewed());
+        ContentValues values = getNoteContentValues(note);
         long result = db.insert(TABLE_NOTES, null, values);
         note.setID(result);
         return result;
@@ -62,7 +58,15 @@ public class NoteSaver extends SQLiteOpenHelper {
 
     private int updateNote(Note note) {
         SQLiteDatabase db = getWritableDatabase();
+        ContentValues values = getNoteContentValues(note);
+        String selection = COLUMN_ID + " = ?";
+        String[] selectionArgs = {String.valueOf(note.getID())};
+        return db.update(TABLE_NOTES, values, selection, selectionArgs);
+    }
+
+    private ContentValues getNoteContentValues(Note note) {
         ContentValues values = new ContentValues();
+        values.put(COLUMN_SERVER_ID, note.getServerID());
         values.put(COLUMN_TITLE, note.getTitle());
         values.put(COLUMN_DESCRIPTION, note.getDescription());
         values.put(COLUMN_COLOR, note.getColor());
@@ -70,9 +74,7 @@ public class NoteSaver extends SQLiteOpenHelper {
         values.put(COLUMN_CREATED, note.getCreated());
         values.put(COLUMN_EDITED, note.getEdited());
         values.put(COLUMN_VIEWED, note.getViewed());
-        String selection = COLUMN_ID + " = ?";
-        String[] selectionArgs = {String.valueOf(note.getID())};
-        return db.update(TABLE_NOTES, values, selection, selectionArgs);
+        return values;
     }
 
     public boolean insertOrUpdate(Note note) {
@@ -105,12 +107,12 @@ public class NoteSaver extends SQLiteOpenHelper {
         Cursor cursor = null;
         try {
             cursor = db.query(TABLE_NOTES, columns, null, null, null, null, null);
-            System.out.format("Total notes in query: %d\n", cursor.getCount());
+            Log.d(TAG, String.format("Total notes in query: %d\n", cursor.getCount()));
             if (cursor.moveToFirst()) {
                 do {
-                    System.out.printf("index:%d title:\"%s\" description:\"%s\"\n created:%s edited:%s viewed:%s\n",
+                    Log.d(TAG, String.format("index:%d title:\"%s\" description:\"%s\"\n created:%s edited:%s viewed:%s\n",
                             cursor.getInt(0), cursor.getString(1), cursor.getString(2),
-                            cursor.getString(3), cursor.getString(4), cursor.getString(5));
+                            cursor.getString(3), cursor.getString(4), cursor.getString(5)));
                 } while (cursor.moveToNext());
             }
         } finally {
@@ -136,7 +138,7 @@ public class NoteSaver extends SQLiteOpenHelper {
                         note.setID(cursor.getID());
                         resultNotes.add(note);
                     } catch (ParseException e) {
-                        System.err.println(String.format("ParseException at %d", cursor.getID()));
+                        Log.e(TAG, String.format("ParseException at %d", cursor.getID()));
                         e.printStackTrace();
                     }
                 } while (cursor.moveToNext());
@@ -183,7 +185,7 @@ public class NoteSaver extends SQLiteOpenHelper {
 
         SQLiteDatabase db = getReadableDatabase();
 
-        String[] columns = {COLUMN_ID, COLUMN_TITLE, COLUMN_DESCRIPTION, COLUMN_COLOR, COLUMN_IMAGE_URL,
+        String[] columns = {COLUMN_ID, COLUMN_SERVER_ID, COLUMN_TITLE, COLUMN_DESCRIPTION, COLUMN_COLOR, COLUMN_IMAGE_URL,
                 COLUMN_CREATED, COLUMN_EDITED, COLUMN_VIEWED};
         String selection = "";
         //TODO: protect from injecting

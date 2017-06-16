@@ -15,13 +15,13 @@ import java.util.List;
 
 import okio.Buffer;
 
-public class ArrayNoteJson {
+public class NoteJsonAdapter {
 
     private static final JsonAdapter<NoteJson> jsonSingleNoteAdapter;
 
     static {
         Moshi moshi = new Moshi.Builder().build();
-        jsonSingleNoteAdapter = moshi.adapter(ArrayNoteJson.NoteJson.class);
+        jsonSingleNoteAdapter = moshi.adapter(NoteJsonAdapter.NoteJson.class);
     }
 
     private JsonReader unpackJsonReader;
@@ -31,7 +31,7 @@ public class ArrayNoteJson {
     private Long startingUnpackSize;
     private InputStream unpackInputStream;
 
-    public ArrayNoteJson() {
+    public NoteJsonAdapter() {
     }
 
     public static List<NoteJson> wrap(List<Note> notes) {
@@ -62,7 +62,7 @@ public class ArrayNoteJson {
         unpackBuffer.readFrom(unpackInputStream);
         while (unpackJsonReader.hasNext() && result.size() < packSize) {
             Object v = unpackJsonReader.readJsonValue();
-            ArrayNoteJson.NoteJson nj = jsonSingleNoteAdapter.fromJsonValue(v);
+            NoteJsonAdapter.NoteJson nj = jsonSingleNoteAdapter.fromJsonValue(v);
             try {
                 result.add(nj.getNote());
             } catch (ParseException e) {

@@ -25,13 +25,13 @@ public class Note implements Parcelable {
     };
     public static final String TAG = "Note";
     static final long ID_IF_NOT_IN_DB = -1;
-    static final long ID_IF_NOT_ON_SERVER = -1;
+    static final int ID_IF_NOT_ON_SERVER = -1;
     private static final SimpleDateFormat date_format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZZZZZ");
     private static final String DEFAULT_TITLE = "";
     private static final String DEFAULT_DESCRIPTION = "";
     //for NoteSaver purposes
     private long _id = ID_IF_NOT_IN_DB;
-    private long _sid = ID_IF_NOT_ON_SERVER;
+    private int _sid = ID_IF_NOT_ON_SERVER;
 
     private String title;
     private String description;
@@ -154,14 +154,14 @@ public class Note implements Parcelable {
     /**
      * @return long if id was set or null if not.
      */
-    public Long getServerID() {
+    public Integer getServerID() {
         if (_sid == ID_IF_NOT_ON_SERVER)
             return null;
         else
             return _sid;
     }
 
-    public void setServerID(long id) {
+    public void setServerID(int id) {
         _sid = id;
     }
 

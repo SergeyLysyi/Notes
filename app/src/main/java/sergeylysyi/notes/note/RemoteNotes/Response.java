@@ -1,38 +1,43 @@
 package sergeylysyi.notes.note.RemoteNotes;
 
-import sergeylysyi.notes.note.ArrayNoteJson;
-
 import java.util.List;
 import java.util.Map;
 
+import sergeylysyi.notes.note.NoteJsonAdapter;
+
 class Response {
-    static class Info {
+    private static String STATUS_OK = "ok";
+    private static String STATUS_ERROR = "error";
+
+    static class BasicResponse<T> {
         public String status;
-        public Map<String, String> data;
+        public T data;
+        public String error;
+
+        public boolean isSuccessful() {
+            return status.equals(STATUS_OK);
+        }
+
+        public boolean isError() {
+            return status.equals(STATUS_ERROR);
+        }
     }
 
-    static class Notes {
-        public String status;
-        public List<ArrayNoteJson.NoteJsonServerResponse> data;
+    static class Info extends BasicResponse<Map<String, String>> {
     }
 
-    static class Note {
-        public String status;
-        public ArrayNoteJson.NoteJsonServerResponse data;
+    static class Notes extends BasicResponse<List<NoteJsonAdapter.NoteJsonServerResponse>> {
     }
 
-    static class PostNote {
-        public String status;
-        public Integer data;
+    static class Note extends BasicResponse<NoteJsonAdapter.NoteJsonServerResponse> {
     }
 
-    static class EditNote {
-        public String status;
-        public Object data;
+    static class PostNote extends BasicResponse<Integer> {
     }
 
-    static class DeleteNote {
-        public String status;
-        public Object data;
+    static class EditNote extends BasicResponse<Object> {
+    }
+
+    static class DeleteNote extends BasicResponse<Object> {
     }
 }

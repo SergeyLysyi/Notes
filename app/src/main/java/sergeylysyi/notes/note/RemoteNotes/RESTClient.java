@@ -1,5 +1,7 @@
 package sergeylysyi.notes.note.RemoteNotes;
 
+import android.util.Log;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -8,8 +10,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import retrofit2.Call;
 import retrofit2.Retrofit;
 import retrofit2.converter.moshi.MoshiConverterFactory;
-import sergeylysyi.notes.note.ArrayNoteJson;
 import sergeylysyi.notes.note.Note;
+import sergeylysyi.notes.note.NoteJsonAdapter;
 
 public class RESTClient {
 
@@ -30,13 +32,20 @@ public class RESTClient {
         this.handler = new Handler();
     }
 
-    protected void getInfo(OnSuccess<Void> cb, OnError err) {
+    protected void getInfo(OnSuccess<Map<String, String>> cb, OnError err) {
         Call<Response.Info> ci = s.getInfo();
         ci.enqueue(handler.new Info(cb, err));
     }
 
     public void get(Note note, OnSuccess<Note> cb, OnError err) {
-        Call<Response.Note> cn = s.getNote(user.getUserID(), note.getID().intValue());
+        int noteID;
+        try {
+            noteID = note.getServerID();
+        } catch (NullPointerException e) {
+            Log.e(TAG, "get: called on note without ServerID", e);
+            return;
+        }
+        Call<Response.Note> cn = s.getNote(user.getUserID(), noteID);
         cn.enqueue(handler.new Note(cb, err));
     }
 
@@ -46,26 +55,40 @@ public class RESTClient {
     }
 
     public void add(Note note, OnSuccess<Integer> cb, OnError err) {
-        Call<Response.PostNote> pn = s.postNote(user.getUserID(), new ArrayNoteJson.NoteJson(note));
+        Call<Response.PostNote> pn = s.postNote(user.getUserID(), new NoteJsonAdapter.NoteJson(note));
         pn.enqueue(handler.new PostNote(cb, err));
     }
 
     public void edit(Note note, OnSuccess<Void> cb, OnError err) {
-        Call<Response.EditNote> en = s.editNote(user.getUserID(), note.getID().intValue(), new ArrayNoteJson.NoteJson(note));
+        int noteID;
+        try {
+            noteID = note.getServerID();
+        } catch (NullPointerException e) {
+            Log.e(TAG, "edit: called on note without ServerID", e);
+            return;
+        }
+        Call<Response.EditNote> en = s.editNote(user.getUserID(), noteID, new NoteJsonAdapter.NoteJson(note));
         en.enqueue(handler.new EditNote(cb, err));
     }
 
     public void delete(Note note, OnSuccess<Void> cb, OnError err) {
-        Call<Response.DeleteNote> dn = s.deleteNote(user.getUserID(), note.getID().intValue());
+        int noteID;
+        try {
+            noteID = note.getServerID();
+        } catch (NullPointerException e) {
+            Log.e(TAG, "delete: called on note without ServerID", e);
+            return;
+        }
+        Call<Response.DeleteNote> dn = s.deleteNote(user.getUserID(), noteID);
         dn.enqueue(handler.new DeleteNote(cb, err));
     }
 
     /**
      * @param cb       Called for every successfully deleted note
      * @param err      Called every time error occurred while performing deletion.
-     * @param fatalErr Called if whole operation can not be performed (and no notes deleted).
+     * @param fatalErr Called if whole operation can not be performed (and no notes will be deleted).
      */
-    public void deleteAll(final OnSuccess<Void> cb, final OnError err, OnError fatalErr) {
+    public void deleteAll(final OnSuccess<Void> cb, final OnError err, final OnError fatalErr) {
         getAll(new OnSuccess<List<Note>>() {
             @Override
             public void success(List<Note> data) {
@@ -73,7 +96,14 @@ public class RESTClient {
                     delete(note, cb, err);
                 }
             }
-        }, fatalErr);
+        }, new OnError() {
+            @Override
+            public void error(Errors e) {
+                if (!(e instanceof Errors.UnparsableRecord)) {
+                    fatalErr.error(e);
+                }
+            }
+        });
     }
 
     /**

@@ -43,6 +43,7 @@ import sergeylysyi.notes.note.NoteJsonImportExport;
 import sergeylysyi.notes.note.NoteListAdapter;
 import sergeylysyi.notes.note.NoteSaver;
 import sergeylysyi.notes.note.NoteSaverService;
+import sergeylysyi.notes.note.RemoteNotes.Errors;
 import sergeylysyi.notes.note.RemoteNotes.OnError;
 import sergeylysyi.notes.note.RemoteNotes.OnSuccess;
 import sergeylysyi.notes.note.RemoteNotes.RESTClient;
@@ -96,7 +97,7 @@ public class MainActivity extends AppCompatActivity implements
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-//        deleteDatabase("Notes.db");
+        deleteDatabase("Notes.db");
 
         startService(new Intent(this, NoteSaverService.class));
 
@@ -138,24 +139,6 @@ public class MainActivity extends AppCompatActivity implements
                     defaultDateFieldPreference
             );
         }
-
-
-        final String URL = "https://notesbackend-yufimtsev.rhcloud.com/";
-        Note note = new Note("note", "note description", 777);
-        note.setID(13290);
-        User user1 = new User(6666);
-        final RESTClient rc = new RESTClient(URL, user1);
-        rc.add(note, new OnSuccess<Integer>() {
-            @Override
-            public void success(Integer data) {
-                Log.i(TAG, "note added with index " + data.toString());
-            }
-        }, new OnError() {
-            @Override
-            public void error(Throwable e) {
-                Log.e(TAG, "error occurred", e);
-            }
-        });
     }
 
     public void launchEdit(Note note) {
@@ -168,7 +151,7 @@ public class MainActivity extends AppCompatActivity implements
         startActivityForResult(intent, EditActivity.EDIT_NOTE);
     }
 
-    public void deleteNote(final Note note) {
+    public void launchDelete(final Note note) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setMessage(R.string.dialog_delete_title)
                 .setPositiveButton(R.string.confirm_button, new DialogInterface.OnClickListener() {
@@ -242,7 +225,7 @@ public class MainActivity extends AppCompatActivity implements
         query.fromFilter(filtersHolder.getCurrentFilterCopy()).withSubstring(searchInTitle, searchInDescription);
         //TODO: get cursor async
         adapter.updateData(query.getCursor());
-        Log.i(TAG, "updateNotesByQuery: adapter.size() = " + adapter.getCount());
+        Log.i(TAG, "updateNotesByQuery: adapter.getCount() = " + adapter.getCount());
     }
 
     private void addNotesFromList(final List<Note> noteList) {
@@ -303,7 +286,6 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     private void importNotesFromFile(String filename) {
-        //TODO: for toasts cut off beginning of filename unexpected to user
         if (!hasIOExternalPermission()) {
             return;
         }

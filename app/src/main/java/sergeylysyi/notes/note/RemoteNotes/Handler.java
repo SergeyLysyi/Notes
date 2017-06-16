@@ -1,12 +1,17 @@
 package sergeylysyi.notes.note.RemoteNotes;
 
 
+import android.util.Log;
+
+import java.io.IOException;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import retrofit2.Call;
 import retrofit2.Callback;
-import sergeylysyi.notes.note.ArrayNoteJson;
+import sergeylysyi.notes.note.NoteJsonAdapter;
 
 class Handler {
     public static final String TAG = Handler.class.getName();
@@ -20,158 +25,156 @@ class Handler {
         protected OnError error;
 
         AbstractHandler(OnSuccess<R> success, OnError error) {
-            this.success = success;
-            this.error = error;
+            if ((this.success = success) == null) {
+                this.success = new OnSuccess<R>() {
+                    @Override
+                    public void success(R data) {
+                    }
+                };
+            }
+            if ((this.error = error) == null) {
+                this.error = new OnError() {
+                    @Override
+                    public void error(Errors e) {
+                        Log.w(TAG, "error: ", e);
+                    }
+                };
+            }
         }
 
         @Override
         public void onFailure(Call<T> call, Throwable throwable) {
-            error.error(throwable);
+            error.error(new Errors.FailedRequest(throwable));
         }
     }
 
-    class Notes extends AbstractHandler<List<sergeylysyi.notes.note.Note>, Response.Notes> {
+    static abstract class AbstractSuccessHandler<R, T extends Response.BasicResponse> extends AbstractHandler<R, T> {
+        public static final String DEFAULT_FAILED_REQUEST_MSG = "Failed request";
+        public final String TAG = Info.class.getName();
+
+        AbstractSuccessHandler(OnSuccess<R> success, OnError error) {
+            super(success, error);
+        }
+
+        abstract void onSuccess(T response);
+
+        @Override
+        public void onResponse(Call<T> call, retrofit2.Response<T> response) {
+            if (response.isSuccessful()) {
+                T r = response.body();
+                assert r != null;
+                if (r.isSuccessful()) {
+                    onSuccess(r);
+                } else {
+                    error.error(new Errors.IncorrectRequest(r.error));
+                }
+            } else {
+                String errorBodyString;
+                try {
+                    try {
+                        errorBodyString = response.errorBody().string();
+                    } catch (IOException e) {
+                        errorBodyString = response.errorBody().toString();
+                    }
+                } catch (NullPointerException e) {
+                    errorBodyString = DEFAULT_FAILED_REQUEST_MSG;
+                }
+                error.error(new Errors.FailedRequest(errorBodyString));
+            }
+        }
+    }
+
+    class Info extends AbstractSuccessHandler<Map<String, String>, Response.Info> {
         final String TAG = Info.class.getName();
+
+        Info(OnSuccess<Map<String, String>> success, OnError error) {
+            super(success, error);
+        }
+
+        @Override
+        public void onSuccess(Response.Info response) {
+            success.success(response.data);
+        }
+    }
+
+    class Notes extends AbstractSuccessHandler<List<sergeylysyi.notes.note.Note>, Response.Notes> {
+        final String TAG = Notes.class.getName();
 
         Notes(OnSuccess<List<sergeylysyi.notes.note.Note>> success, OnError error) {
             super(success, error);
         }
 
         @Override
-        public void onResponse(Call<Response.Notes> call, retrofit2.Response<Response.Notes> response) {
-            if (response.isSuccessful()) {
-                Response.Notes r = response.body();
-                assert r != null;
-                System.out.println("onResponse: status: " + r.status);
-                StringBuffer sb = new StringBuffer();
-                for (ArrayNoteJson.NoteJsonServerResponse note : r.data) {
-                    try {
-                        sb.append(String.format("%s\n", note.getNote().getTitle()));
-                    } catch (ParseException e) {
-                        e.printStackTrace();
-                    }
+        public void onSuccess(Response.Notes response) {
+            List<sergeylysyi.notes.note.Note> notes = new ArrayList<>(response.data.size());
+            for (NoteJsonAdapter.NoteJsonServerResponse noteJson : response.data) {
+                try {
+                    sergeylysyi.notes.note.Note note = noteJson.getNote();
+                    notes.add(note);
+                } catch (ParseException e) {
+                    error.error(new Errors.UnparsableRecord(e));
                 }
-                System.out.println("onResponse: data: \n" + sb.toString());
-            } else {
-                System.out.println("onResponse: " + response.errorBody());
             }
+            success.success(notes);
         }
     }
 
-    class Info extends AbstractHandler<Void, Response.Info> {
-        final String TAG = Info.class.getName();
-
-        Info(OnSuccess<Void> success, OnError error) {
-            super(success, error);
-        }
-
-        @Override
-        public void onResponse(Call<Response.Info> call, retrofit2.Response<Response.Info> response) {
-            if (response.isSuccessful()) {
-                Response.Info r = response.body();
-                assert r != null;
-                System.out.println("onResponse: status: " + r.status);
-                StringBuffer sb = new StringBuffer();
-                for (String key : r.data.keySet()) {
-                    sb.append(String.format("%s : %s\n", key, r.data.get(key)));
-                }
-                System.out.println("onResponse: data: \n" + sb.toString());
-            } else {
-                System.out.println("onResponse: " + response.errorBody());
-            }
-        }
-    }
-
-    class Note extends AbstractHandler<sergeylysyi.notes.note.Note, Response.Note> {
-        final String TAG = Info.class.getName();
+    class Note extends AbstractSuccessHandler<sergeylysyi.notes.note.Note, Response.Note> {
+        final String TAG = Note.class.getName();
 
         Note(OnSuccess<sergeylysyi.notes.note.Note> success, OnError error) {
             super(success, error);
         }
 
         @Override
-        public void onResponse(Call<Response.Note> call, retrofit2.Response<Response.Note> response) {
-            if (response.isSuccessful()) {
-                Response.Note r = response.body();
-                assert r != null;
-                System.out.println("onResponse: status: " + r.status);
-                StringBuffer sb = new StringBuffer();
-                try {
-                    sb.append(String.format("%s\n", r.data.getNote().getTitle()));
-                } catch (ParseException e) {
-                    e.printStackTrace();
-                }
-                System.out.println("onResponse: data: \n" + sb.toString());
-            } else {
-                System.out.println("onResponse: " + response.errorBody());
+        public void onSuccess(Response.Note response) {
+            sergeylysyi.notes.note.Note note;
+            try {
+                note = response.data.getNote();
+            } catch (ParseException e) {
+                error.error(new Errors.UnparsableRecord(e));
+                return;
             }
+            success.success(note);
         }
     }
 
-    class PostNote extends AbstractHandler<Integer, Response.PostNote> {
-        final String TAG = Info.class.getName();
+    class PostNote extends AbstractSuccessHandler<Integer, Response.PostNote> {
+        final String TAG = PostNote.class.getName();
 
         public PostNote(OnSuccess<Integer> success, OnError error) {
             super(success, error);
         }
 
         @Override
-        public void onResponse(Call<Response.PostNote> call, retrofit2.Response<Response.PostNote> response) {
-            if (response.isSuccessful()) {
-                Response.PostNote r = response.body();
-                assert r != null;
-                System.out.println("onResponse: status: " + r.status);
-                StringBuffer sb = new StringBuffer();
-                sb.append(String.format("%s\n", r.data));
-                System.out.println("onResponse: data: \n" + sb.toString());
-            } else {
-                System.out.println("onResponse: " + response.errorBody());
-            }
+        public void onSuccess(Response.PostNote response) {
+            success.success(response.data);
         }
     }
 
-    class EditNote extends AbstractHandler<Void, Response.EditNote> {
-        final String TAG = Info.class.getName();
+    class EditNote extends AbstractSuccessHandler<Void, Response.EditNote> {
+        final String TAG = EditNote.class.getName();
 
         public EditNote(OnSuccess<Void> success, OnError error) {
             super(success, error);
         }
 
         @Override
-        public void onResponse(Call<Response.EditNote> call, retrofit2.Response<Response.EditNote> response) {
-            if (response.isSuccessful()) {
-                Response.EditNote r = response.body();
-                assert r != null;
-                System.out.println("onResponse: status: " + r.status);
-                StringBuffer sb = new StringBuffer();
-                sb.append(String.format("%s\n", r.data));
-                System.out.println("onResponse: data: \n" + sb.toString());
-            } else {
-                System.out.println("onResponse: " + response.errorBody());
-            }
+        public void onSuccess(Response.EditNote response) {
+            success.success(null);
         }
     }
 
-    class DeleteNote extends AbstractHandler<Void, Response.DeleteNote> {
-        final String TAG = Info.class.getName();
+    class DeleteNote extends AbstractSuccessHandler<Void, Response.DeleteNote> {
+        final String TAG = DeleteNote.class.getName();
 
         public DeleteNote(OnSuccess<Void> success, OnError error) {
             super(success, error);
         }
 
         @Override
-        public void onResponse(Call<Response.DeleteNote> call, retrofit2.Response<Response.DeleteNote> response) {
-            if (response.isSuccessful()) {
-                Response.DeleteNote r = response.body();
-                assert r != null;
-                System.out.println("onResponse: status: " + r.status);
-                StringBuffer sb = new StringBuffer();
-                sb.append(String.format("%s\n", r.data));
-                System.out.println("onResponse: data: \n" + sb.toString());
-            } else {
-                System.out.println("onResponse: " + response.errorBody());
-            }
+        public void onSuccess(Response.DeleteNote response) {
+            success.success(null);
         }
     }
-
 }

@@ -46,11 +46,11 @@ public class NoteJsonImportExport extends Handler {
         saver.new Query().getCursorWithCallback(this, new NoteSaverService.OnGetNoteCursorCallback() {
             @Override
             public void onGetNoteCursor(NoteCursor cursor) {
-                ArrayNoteJson arrayNoteJson = new ArrayNoteJson();
+                NoteJsonAdapter noteJsonAdapter = new NoteJsonAdapter();
                 final int total = cursor.getCount();
                 int done = 0;
                 try {
-                    arrayNoteJson.startPack();
+                    noteJsonAdapter.startPack();
                     if (cursor.moveToFirst()) {
                         List<Note> pack = new ArrayList<>();
                         boolean isMoved;
@@ -64,12 +64,12 @@ public class NoteJsonImportExport extends Handler {
                                 }
                                 isMoved = cursor.moveToNext();
                             } while (isMoved && pack.size() < EXPORT_PACK_SIZE);
-                            outputStream.write(arrayNoteJson.pack(pack));
+                            outputStream.write(noteJsonAdapter.pack(pack));
                             done += pack.size();
                             double percentDone = 100 * (double) done / total;
                             factory.progressCallback.onProgress(percentDone);
                         } while (isMoved);
-                        outputStream.write(arrayNoteJson.endPack());
+                        outputStream.write(noteJsonAdapter.endPack());
                         factory.finishCallback.onFinish(true);
                     }
                 } catch (IOException e) {
@@ -81,7 +81,7 @@ public class NoteJsonImportExport extends Handler {
     }
 
     private void notesFromJson(InputStream inputStream, RunnableFactory factory) throws IOException, ParseException {
-        ArrayNoteJson arj = new ArrayNoteJson();
+        NoteJsonAdapter arj = new NoteJsonAdapter();
         arj.startUnpack(inputStream);
         List<Note> pack;
         saver.clearWithCallback(null, null);
@@ -150,7 +150,6 @@ public class NoteJsonImportExport extends Handler {
         runnableFactory.setProgressCallback(new ProgressCallback() {
             @Override
             public void onProgress(double percentDone) {
-                System.out.printf("percentDone = %.4f\n", percentDone);
                 Message m = new Message();
                 m.what = REPLY_PROGRESS;
                 m.arg1 = REQUEST_IMPORT;
@@ -164,7 +163,6 @@ public class NoteJsonImportExport extends Handler {
         runnableFactory.setFinishCallback(new FinishCallback() {
             @Override
             public void onFinish(boolean isSucceed) {
-                System.out.println("isSucceed = [" + isSucceed + "]");
                 Message m = new Message();
                 m.what = REPLY_FINISH;
                 m.arg1 = REQUEST_IMPORT;

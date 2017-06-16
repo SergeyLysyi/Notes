@@ -92,7 +92,7 @@ public class NoteListAdapter extends ArrayAdapter {
             convertView.setOnLongClickListener(new View.OnLongClickListener() {
                 @Override
                 public boolean onLongClick(View v) {
-                    ((MainActivity) v.getContext()).deleteNote(getItem(holder.position));
+                    ((MainActivity) v.getContext()).launchDelete(getItem(holder.position));
                     return true;
                 }
             });

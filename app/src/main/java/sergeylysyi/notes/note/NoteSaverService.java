@@ -132,7 +132,7 @@ public class NoteSaverService extends Service {
                                      NoteJsonImportExport.ProgressCallback onProgressExport,
                                      NoteJsonImportExport.FinishCallback onFinishExport) {
             if (!isMessageFromJsonSender(message)) {
-                System.out.println("not NJIE message");
+                Log.i(TAG, "not NoteJsonImportExport message");
                 return;
             }
             Exception exUnknownType =
@@ -261,7 +261,7 @@ public class NoteSaverService extends Service {
                         }
                     }
                     changeOverAllToAddByValueAndUpdate(-sizeOfEntriesToAdd);
-                    Log.i(TAG, "many added");
+                    Log.i(TAG, String.format("pack of %d notes added to database", sizeOfEntriesToAdd));
                     if (handlerForCallback != null && callback != null) {
                         handlerForCallback.post(new Runnable() {
                             @Override

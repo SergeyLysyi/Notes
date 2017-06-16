@@ -1,23 +1,33 @@
 package sergeylysyi.notes.note;
 
 import android.database.Cursor;
+import android.util.Log;
 
 import java.io.Closeable;
 import java.text.ParseException;
 
 
 public class NoteCursor implements Closeable {
-    final Cursor cursor;
+    private final Cursor cursor;
 
     public NoteCursor(Cursor cursor) {
         this.cursor = cursor;
     }
 
     public Note getNote() throws ParseException {
-        Note note = new Note(cursor.getString(1), cursor.getString(2), cursor.getInt(3),
-                cursor.getString(5), cursor.getString(6), cursor.getString(7));
+        Note note = new Note(cursor.getString(2), cursor.getString(3), cursor.getInt(4),
+                cursor.getString(6), cursor.getString(7), cursor.getString(8));
         note.setID(getID());
-        note.setImageURL(cursor.getString(4));
+        if (!cursor.isNull(1)) {
+            note.setServerID(cursor.getInt(1));
+        } else {
+            Log.i("NoteCursor: ",
+                    String.format(
+                            "getNote: ServerID is null for note with id = %d, title = \"%s\"",
+                            note.getID(),
+                            note.getTitle()));
+        }
+        note.setImageURL(cursor.getString(5));
         return note;
     }
 
