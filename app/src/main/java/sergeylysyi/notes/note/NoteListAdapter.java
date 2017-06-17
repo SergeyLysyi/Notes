@@ -21,7 +21,7 @@ import sergeylysyi.notes.MainActivity;
 import sergeylysyi.notes.R;
 
 
-public class NoteListAdapter extends ArrayAdapter {
+public class NoteListAdapter extends ArrayAdapter<Note> {
     private final LayoutInflater inflater;
     private final int resource;
     private NoteCursor cursor;
@@ -70,8 +70,9 @@ public class NoteListAdapter extends ArrayAdapter {
         return Collections.unmodifiableList(notes);
     }
 
+    @NonNull
     @Override
-    public View getView(int position, View convertView, ViewGroup parent) {
+    public View getView(int position, View convertView, @NonNull ViewGroup parent) {
 
         final ViewHolder holder;
 

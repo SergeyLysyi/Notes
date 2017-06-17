@@ -73,16 +73,16 @@ public class NoteSaverService extends Service {
         super.onDestroy();
     }
 
-    public interface OnChangeNotesCallback {
-        void onChangeNotes(long leftToAdd);
+    public interface OnChange {
+        void onChange(long leftToAdd);
     }
 
-    public interface OnGetNotesCallback {
-        void onGetNotes(List<Note> notes);
+    public interface OnGet {
+        void onGet(List<Note> notes);
     }
 
-    public interface OnGetNoteCursorCallback {
-        void onGetNoteCursor(NoteCursor cursor);
+    public interface OnGetCursor {
+        void onGetCursor(NoteCursor cursor);
     }
 
     public class LocalBinder extends Binder {
@@ -172,7 +172,7 @@ public class NoteSaverService extends Service {
         public static final int NOTIFICATION_DATA_BASE_OPERATIONS_ID = 102;
         private long overAllToAdd = 0;
         private Context context;
-        private OnChangeNotesCallback allDoneCallback = null;
+        private OnChange allDoneCallback = null;
         private Handler allDoneHandler = null;
         private int clearCommandsInQueue = 0;
 
@@ -212,7 +212,7 @@ public class NoteSaverService extends Service {
                 allDoneHandler.post(new Runnable() {
                     @Override
                     public void run() {
-                        allDoneCallback.onChangeNotes(getOverAllToAdd());
+                        allDoneCallback.onChange(getOverAllToAdd());
                     }
                 });
             }
@@ -227,7 +227,7 @@ public class NoteSaverService extends Service {
             updateSaverNotification(getOverAllToAdd());
         }
 
-        public void insertOrUpdateWithCallback(final Note note, final Handler handlerForCallback, final OnChangeNotesCallback callback) {
+        public void insertOrUpdateWithCallback(final Note note, final Handler handlerForCallback, final OnChange callback) {
             final int sizeOfEntriesToAdd = 1;
             changeOverAllToAddByValueAndUpdate(sizeOfEntriesToAdd);
             handlerSaver.postAtFrontOfQueue(new Runnable() {
@@ -241,7 +241,7 @@ public class NoteSaverService extends Service {
                         handlerForCallback.post(new Runnable() {
                             @Override
                             public void run() {
-                                callback.onChangeNotes(getOverAllToAdd());
+                                callback.onChange(getOverAllToAdd());
                             }
                         });
                     }
@@ -249,7 +249,7 @@ public class NoteSaverService extends Service {
             });
         }
 
-        public void insertOrUpdateManyWithCallback(final List<Note> notes, final Handler handlerForCallback, final OnChangeNotesCallback callback) {
+        public void insertOrUpdateManyWithCallback(final List<Note> notes, final Handler handlerForCallback, final OnChange callback) {
             final int sizeOfEntriesToAdd = notes.size();
             changeOverAllToAddByValueAndUpdate(sizeOfEntriesToAdd);
             handlerSaver.post(new Runnable() {
@@ -266,7 +266,7 @@ public class NoteSaverService extends Service {
                         handlerForCallback.post(new Runnable() {
                             @Override
                             public void run() {
-                                callback.onChangeNotes(getOverAllToAdd());
+                                callback.onChange(getOverAllToAdd());
                             }
                         });
                     }
@@ -281,7 +281,7 @@ public class NoteSaverService extends Service {
             return true;
         }
 
-        public void deleteNoteWithCallback(final Note note, final Handler handlerForCallback, final OnChangeNotesCallback callback) {
+        public void deleteNoteWithCallback(final Note note, final Handler handlerForCallback, final OnChange callback) {
             handlerSaver.postAtFrontOfQueue(new Runnable() {
                 @Override
                 public void run() {
@@ -290,7 +290,7 @@ public class NoteSaverService extends Service {
                         handlerForCallback.post(new Runnable() {
                             @Override
                             public void run() {
-                                callback.onChangeNotes(getOverAllToAdd());
+                                callback.onChange(getOverAllToAdd());
                             }
                         });
                     }
@@ -305,7 +305,7 @@ public class NoteSaverService extends Service {
             return 0;
         }
 
-        public void clearWithCallback(final Handler handlerForCallback, final OnChangeNotesCallback callback) {
+        public void clearWithCallback(final Handler handlerForCallback, final OnChange callback) {
             clearCommandAppearsInQueue();
             handlerSaver.post(new Runnable() {
                 @Override
@@ -316,7 +316,7 @@ public class NoteSaverService extends Service {
                         handlerForCallback.post(new Runnable() {
                             @Override
                             public void run() {
-                                callback.onChangeNotes(getOverAllToAdd());
+                                callback.onChange(getOverAllToAdd());
                             }
                         });
                     }
@@ -324,7 +324,7 @@ public class NoteSaverService extends Service {
             });
         }
 
-        public void setAllFinishedCallback(Handler handler, OnChangeNotesCallback callback) {
+        public void setAllFinishedCallback(Handler handler, OnChange callback) {
             allDoneHandler = handler;
             allDoneCallback = callback;
         }
@@ -344,7 +344,7 @@ public class NoteSaverService extends Service {
         }
 
         public class Query extends NoteSaver.Query {
-            public void getWithCallback(final Handler handlerForCallback, final OnGetNotesCallback callback) {
+            public void getWithCallback(final Handler handlerForCallback, final OnGet callback) {
                 handlerSaver.postAtFrontOfQueue(new Runnable() {
                     @Override
                     public void run() {
@@ -353,7 +353,7 @@ public class NoteSaverService extends Service {
                             handlerForCallback.post(new Runnable() {
                                 @Override
                                 public void run() {
-                                    callback.onGetNotes(notes);
+                                    callback.onGet(notes);
                                 }
                             });
                         }
@@ -361,7 +361,7 @@ public class NoteSaverService extends Service {
                 });
             }
 
-            public void getCursorWithCallback(final Handler handlerForCallback, final OnGetNoteCursorCallback callback) {
+            public void getCursorWithCallback(final Handler handlerForCallback, final OnGetCursor callback) {
                 handlerSaver.postAtFrontOfQueue(new Runnable() {
                     @Override
                     public void run() {
@@ -370,7 +370,7 @@ public class NoteSaverService extends Service {
                             handlerForCallback.post(new Runnable() {
                                 @Override
                                 public void run() {
-                                    callback.onGetNoteCursor(notes);
+                                    callback.onGetCursor(notes);
                                 }
                             });
                         }
@@ -381,9 +381,9 @@ public class NoteSaverService extends Service {
             @Override
             public List<Note> get() {
                 final List<Note> result = new ArrayList<>();
-                getWithCallback(handlerSaver, new OnGetNotesCallback() {
+                getWithCallback(handlerSaver, new OnGet() {
                     @Override
-                    public void onGetNotes(List<Note> notes) {
+                    public void onGet(List<Note> notes) {
                         result.addAll(notes);
                     }
                 });

@@ -40,14 +40,9 @@ import java.util.Random;
 import sergeylysyi.notes.Dialogs.DialogInvoker;
 import sergeylysyi.notes.note.Note;
 import sergeylysyi.notes.note.NoteJsonImportExport;
-import sergeylysyi.notes.note.NoteListAdapter;
 import sergeylysyi.notes.note.NoteSaver;
 import sergeylysyi.notes.note.NoteSaverService;
-import sergeylysyi.notes.note.RemoteNotes.Errors;
-import sergeylysyi.notes.note.RemoteNotes.OnError;
-import sergeylysyi.notes.note.RemoteNotes.OnSuccess;
-import sergeylysyi.notes.note.RemoteNotes.RESTClient;
-import sergeylysyi.notes.note.RemoteNotes.User;
+import sergeylysyi.notes.note.NoteStorage;
 
 import static sergeylysyi.notes.EditActivity.INTENT_KEY_NOTE;
 import static sergeylysyi.notes.EditActivity.INTENT_KEY_NOTE_IS_CHANGED;
@@ -79,8 +74,7 @@ public class MainActivity extends AppCompatActivity implements
     private final NoteSaver.NoteSortOrder defaultSortOrderPreference = NoteSaver.NoteSortOrder.descending;
     private final NoteSaver.NoteSortField defaultSortFieldPreference = NoteSaver.NoteSortField.created;
     private final NoteSaver.NoteDateField defaultDateFieldPreference = NoteSaver.NoteDateField.edited;
-    private NoteListAdapter adapter;
-    private NoteSaverService.LocalSaver saver;
+    private NoteStorage storage;
     private NoteSaverService.LocalJson noteFileOperator;
     private DialogInvoker dialogInvoker;
     private FiltersHolder filtersHolder;
@@ -97,7 +91,9 @@ public class MainActivity extends AppCompatActivity implements
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        deleteDatabase("Notes.db");
+//        deleteDatabase("Notes.db");
+
+        storage = new NoteStorage(this);
 
         startService(new Intent(this, NoteSaverService.class));
 
@@ -105,10 +101,7 @@ public class MainActivity extends AppCompatActivity implements
 
         ListView lv = (ListView) findViewById(R.id.listView);
 
-        adapter = new NoteListAdapter(
-                this,
-                R.layout.layout_note);
-        lv.setAdapter(adapter);
+        storage.setAdapterForView(lv);
         lv.setEmptyView(findViewById(R.id.empty));
 
         if (savedInstanceState != null) {
@@ -145,9 +138,6 @@ public class MainActivity extends AppCompatActivity implements
         noteInChangingState = note;
         final Intent intent = new Intent(this, EditActivity.class);
         fillIntentWithNoteInfo(intent, note);
-        note.updateOpenDate();
-        // save new open date for note to db
-        saver.insertOrUpdateWithCallback(note, null, null);
         startActivityForResult(intent, EditActivity.EDIT_NOTE);
     }
 
@@ -156,13 +146,7 @@ public class MainActivity extends AppCompatActivity implements
         builder.setMessage(R.string.dialog_delete_title)
                 .setPositiveButton(R.string.confirm_button, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
-                        saver.deleteNoteWithCallback(note, new Handler(getMainLooper()),
-                                new NoteSaverService.OnChangeNotesCallback() {
-                                    @Override
-                                    public void onChangeNotes(long leftToAdd) {
-                                        updateNotesFromSaver();
-                                    }
-                                });
+                        storage.deleteNote(note);
                     }
                 })
                 .setNegativeButton(R.string.dialog_negative_button, new DialogInterface.OnClickListener() {
@@ -174,26 +158,9 @@ public class MainActivity extends AppCompatActivity implements
         builder.create().show();
     }
 
-    public void editNote(final Note originalNote, final Note changedNote) {
-        if (!originalNote.getTitle().equals(changedNote.getTitle()))
-            originalNote.setTitle(changedNote.getTitle());
-        if (!originalNote.getDescription().equals(changedNote.getDescription()))
-            originalNote.setDescription(changedNote.getDescription());
-        if (!Integer.valueOf(originalNote.getColor()).equals(changedNote.getColor()))
-            originalNote.setColor(changedNote.getColor());
-        if (!originalNote.getImageUrl().equals(changedNote.getImageUrl()))
-            originalNote.setImageURL(changedNote.getImageUrl());
-        saver.insertOrUpdateWithCallback(originalNote, new Handler(getMainLooper()), new NoteSaverService.OnChangeNotesCallback() {
-            @Override
-            public void onChangeNotes(long leftToAdd) {
-                updateNotesFromSaver();
-            }
-        });
-    }
-
     public void launchAdd(View view) {
         Intent intent = new Intent(this, EditActivity.class);
-        int noteIndex = adapter.getCount();
+        int noteIndex = storage.getCount();
         Note note = new Note(getDefaultNoteTitleTextWithIndex(noteIndex),
                 DEFAULT_NOTE_DESCRIPTION,
                 getResources().getColor(R.color.colorPrimary));
@@ -213,34 +180,7 @@ public class MainActivity extends AppCompatActivity implements
     private void resetFilterAndUpdate() {
         filtersHolder.reset();
         clearSearch();
-        updateNotesFromSaver();
-    }
-
-    private void updateNotesFromSaver() {
-        NoteSaverService.LocalSaver.Query query = saver.new Query();
-        updateNotesByQuery(query);
-    }
-
-    private void updateNotesByQuery(NoteSaverService.LocalSaver.Query query) {
-        query.fromFilter(filtersHolder.getCurrentFilterCopy()).withSubstring(searchInTitle, searchInDescription);
-        //TODO: get cursor async
-        adapter.updateData(query.getCursor());
-        Log.i(TAG, "updateNotesByQuery: adapter.getCount() = " + adapter.getCount());
-    }
-
-    private void addNotesFromList(final List<Note> noteList) {
-        saver.insertOrUpdateManyWithCallback(noteList, new Handler(getMainLooper()), new NoteSaverService.OnChangeNotesCallback() {
-            @Override
-            public void onChangeNotes(long leftToAdd) {
-                updateNotesFromSaver();
-            }
-        });
-    }
-
-    private void searchSubstring(String inTitle, String inDescription) {
-        searchInTitle = inTitle;
-        searchInDescription = inDescription;
-        updateNotesFromSaver();
+        storage.update(filtersHolder.getCurrentFilterCopy());
     }
 
     private void launchPickFile() {
@@ -308,14 +248,22 @@ public class MainActivity extends AppCompatActivity implements
         if (resultCode == RESULT_OK) {
             switch (requestCode) {
                 case EditActivity.EDIT_NOTE:
+                    final Note oldNote = noteInChangingState;
+                    final Note newNote;
                     if (data.getBooleanExtra(INTENT_KEY_NOTE_IS_CHANGED, false)) {
-                        final Note oldNote = noteInChangingState;
-                        final Note newNote = data.getParcelableExtra(INTENT_KEY_NOTE);
+                        newNote = data.getParcelableExtra(INTENT_KEY_NOTE);
                         // service with saver will be bound at end of queue and might not exist right now
                         new Handler().post(new Runnable() {
                             @Override
                             public void run() {
-                                editNote(oldNote, newNote);
+                                storage.editNote(oldNote, newNote);
+                            }
+                        });
+                    } else {
+                        new Handler().post(new Runnable() {
+                            @Override
+                            public void run() {
+                                storage.notifyOpened(oldNote);
                             }
                         });
                     }
@@ -391,7 +339,7 @@ public class MainActivity extends AppCompatActivity implements
                     dialogInvoker.searchDialog(this);
                 } else {
                     clearSearch();
-                    updateNotesFromSaver();
+                    storage.update(filtersHolder.getCurrentFilterCopy());
                 }
                 break;
             case R.id.action_fill:
@@ -416,7 +364,7 @@ public class MainActivity extends AppCompatActivity implements
                 i++;
             }
             Log.i(TAG, "fillAndUpload: launched to index " + i);
-            addNotesFromList(list);
+            storage.addNotes(list);
         }
     }
 
@@ -483,26 +431,26 @@ public class MainActivity extends AppCompatActivity implements
 
     @Override
     protected void onDestroy() {
-        saver.close();
+        storage.close();
         super.onDestroy();
     }
 
     @Override
     public void onSortDialogResult(NoteSaver.QueryFilter result) {
         filtersHolder.setCurrentFilterFrom(result);
-        updateNotesFromSaver();
+        storage.update(filtersHolder.getCurrentFilterCopy());
     }
 
     @Override
     public void onFilterDialogResult(NoteSaver.QueryFilter result) {
         filtersHolder.setCurrentFilterFrom(result);
-        updateNotesFromSaver();
+        storage.update(filtersHolder.getCurrentFilterCopy());
     }
 
     @Override
     public void onSearchDialogResult(DialogInvoker.SearchDialogResult result) {
         if (!(result.title == null && result.description == null)) {
-            searchSubstring(result.title, result.description);
+            storage.searchSubstring(result.title, result.description);
         } else {
             onSearchCancel();
         }
@@ -526,22 +474,16 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     public void onApplyFilterEntry(String entryName) {
         filtersHolder.apply(entryName);
-        updateNotesFromSaver();
+        storage.update(filtersHolder.getCurrentFilterCopy());
     }
 
     @Override
     public void onServiceConnected(ComponentName name, IBinder service) {
         Log.i(getLocalClassName(), "Service bound");
         NoteSaverService.LocalBinder binder = ((NoteSaverService.LocalBinder) service);
-        saver = binder.getSaver();
-        saver.setAllFinishedCallback(new Handler(), new NoteSaverService.OnChangeNotesCallback() {
-            @Override
-            public void onChangeNotes(long leftToAdd) {
-                updateNotesFromSaver();
-            }
-        });
+        storage.finishInitFromBinder(binder);
         noteFileOperator = binder.getFileOperator();
-        updateNotesFromSaver();
+        storage.update(filtersHolder.getCurrentFilterCopy());
     }
 
     @Override
@@ -568,7 +510,7 @@ public class MainActivity extends AppCompatActivity implements
 
         @Override
         public void onProgress(double percentDone) {
-            updateNotesFromSaver();
+            storage.update(filtersHolder.getCurrentFilterCopy());
             Notification not = new NotificationCompat.Builder(MainActivity.this)
                     .setSmallIcon(android.R.drawable.btn_star)
                     .setContentTitle(getString(R.string.app_name))
@@ -580,7 +522,7 @@ public class MainActivity extends AppCompatActivity implements
         public void onFinish(boolean isSucceed) {
             String result;
             if (isSucceed) {
-                updateNotesFromSaver();
+                storage.update(filtersHolder.getCurrentFilterCopy());
                 result = getString(R.string.notification_success);
             } else {
                 result = getString(R.string.notification_failed);

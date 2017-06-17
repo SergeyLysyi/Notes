@@ -2,6 +2,8 @@ package sergeylysyi.notes.note;
 
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.util.Log;
 
 import java.text.ParseException;
@@ -133,6 +135,7 @@ public class Note implements Parcelable {
     /**
      * @return long if id was set or null if not.
      */
+    @Nullable
     public Long getID() {
         if (_id == ID_IF_NOT_IN_DB)
             return null;
@@ -154,6 +157,7 @@ public class Note implements Parcelable {
     /**
      * @return long if id was set or null if not.
      */
+    @Nullable
     public Integer getServerID() {
         if (_sid == ID_IF_NOT_ON_SERVER)
             return null;
@@ -165,12 +169,15 @@ public class Note implements Parcelable {
         _sid = id;
     }
 
+    @NonNull
     public String getTitle() {
         return title;
     }
 
-    public void setTitle(String newHeader) {
-        this.title = newHeader;
+    public void setTitle(String newTitle) {
+        if (newTitle == null)
+            newTitle = "";
+        this.title = newTitle;
         updateEditDate();
     }
 
@@ -179,16 +186,20 @@ public class Note implements Parcelable {
         updateEditDate();
     }
 
+    @NonNull
     public String getImageUrl() {
-        return imageUrl;
+        return imageUrl != null ? imageUrl : "";
     }
 
+    @NonNull
     public String getDescription() {
         return description;
     }
 
-    public void setDescription(String newBody) {
-        this.description = newBody;
+    public void setDescription(String newDescription) {
+        if (newDescription == null)
+            newDescription = "";
+        this.description = newDescription;
         updateEditDate();
     }
 
@@ -201,14 +212,17 @@ public class Note implements Parcelable {
         updateEditDate();
     }
 
+    @NonNull
     String getCreated() {
         return Note.formatDate(creationDate);
     }
 
+    @NonNull
     String getEdited() {
         return Note.formatDate(lastEditDate);
     }
 
+    @NonNull
     String getViewed() {
         return Note.formatDate(lastOpenDate);
     }
@@ -230,5 +244,17 @@ public class Note implements Parcelable {
         dest.writeString(creationDate.getTime().toString());
         dest.writeString(lastEditDate.getTime().toString());
         dest.writeString(lastOpenDate.getTime().toString());
+    }
+
+    public boolean localToRemoteEquals(Note note) {
+        return this.getServerID() != null &&
+                note.getServerID() != null &&
+                this.getServerID().equals(note.getServerID()) &&
+                this.getTitle().equals(note.getTitle()) &&
+                this.getDescription().equals(note.getTitle()) &&
+                this.getCreated().equals(note.getCreated()) &&
+                this.getEdited().equals(note.getEdited()) &&
+                this.getViewed().equals(note.getViewed()) &&
+                this.getImageUrl().equals(note.getImageUrl());
     }
 }

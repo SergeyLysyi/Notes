@@ -43,9 +43,9 @@ public class NoteJsonImportExport extends Handler {
     }
 
     private void notesToJson(final OutputStream outputStream, final RunnableFactory factory) {
-        saver.new Query().getCursorWithCallback(this, new NoteSaverService.OnGetNoteCursorCallback() {
+        saver.new Query().getCursorWithCallback(this, new NoteSaverService.OnGetCursor() {
             @Override
-            public void onGetNoteCursor(NoteCursor cursor) {
+            public void onGetCursor(NoteCursor cursor) {
                 NoteJsonAdapter noteJsonAdapter = new NoteJsonAdapter();
                 final int total = cursor.getCount();
                 int done = 0;

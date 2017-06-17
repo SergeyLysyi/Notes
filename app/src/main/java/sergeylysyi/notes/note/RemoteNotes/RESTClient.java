@@ -108,7 +108,7 @@ public class RESTClient {
 
     /**
      * @param notes Notes to add.
-     * @param cb    Called for every successfully added note.
+     * @param cb    Called for every successfully added note.Keys of result is notes from initial argument by reference.
      * @param err   Called every time error occurred while performing addition.
      */
     public void addAll(List<Note> notes, final OnSuccess<Map<Note, Integer>> cb, OnError err) {

@@ -15,6 +15,7 @@ import java.util.List;
 
 
 public class NoteSaver extends SQLiteOpenHelper {
+    public static final String TAG = NoteSaver.class.getName();
     private static final String COLUMN_ID = BaseColumns._ID;
     private static final String COLUMN_SERVER_ID = "ServerID";
     private static final String COLUMN_TITLE = "Title";
@@ -37,7 +38,6 @@ public class NoteSaver extends SQLiteOpenHelper {
             TABLE_NOTES, COLUMN_ID, COLUMN_SERVER_ID, COLUMN_TITLE, COLUMN_DESCRIPTION, COLUMN_COLOR, COLUMN_IMAGE_URL,
             COLUMN_CREATED, COLUMN_EDITED, COLUMN_VIEWED);
     private static final String DROP_TABLE_QUERY = String.format("DROP TABLE IF EXISTS %s", TABLE_NOTES);
-    public static final String TAG = NoteSaver.class.getName();
 
     public NoteSaver(Context context) {
         super(context, DB_NAME, null, VERSION);
@@ -244,7 +244,6 @@ public class NoteSaver extends SQLiteOpenHelper {
         public GregorianCalendar before;
 
         public QueryFilter() {
-
         }
 
         public QueryFilter(QueryFilter filter) {

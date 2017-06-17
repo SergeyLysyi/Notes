@@ -1,7 +1,6 @@
 package sergeylysyi.notes.note;
 
 import android.database.Cursor;
-import android.util.Log;
 
 import java.io.Closeable;
 import java.text.ParseException;
@@ -20,12 +19,6 @@ public class NoteCursor implements Closeable {
         note.setID(getID());
         if (!cursor.isNull(1)) {
             note.setServerID(cursor.getInt(1));
-        } else {
-            Log.i("NoteCursor: ",
-                    String.format(
-                            "getNote: ServerID is null for note with id = %d, title = \"%s\"",
-                            note.getID(),
-                            note.getTitle()));
         }
         note.setImageURL(cursor.getString(5));
         return note;
