@@ -44,22 +44,22 @@ public class Note implements Parcelable {
     private GregorianCalendar lastOpenDate;
 
     public Note() {
-        this(DEFAULT_TITLE, DEFAULT_DESCRIPTION, 0);
+        this(DEFAULT_TITLE, DEFAULT_DESCRIPTION, 0, null);
     }
 
-    public Note(String title, String description, int color) {
+    public Note(String title, String description, int color, String imageUrl) {
         this.title = title;
         this.description = description;
         this.color = color;
-        this.imageUrl = "";
+        this.imageUrl = imageUrl;
         creationDate = new GregorianCalendar(TimeZone.getDefault());
         lastEditDate = creationDate;
         lastOpenDate = creationDate;
     }
 
-    Note(String title, String description, int color,
+    Note(String title, String description, int color, String imageUrl,
          String creationDate, String lastEditDate, String lastOpenDate) throws ParseException {
-        this(title, description, color);
+        this(title, description, color, imageUrl);
         this.creationDate = parseDate(creationDate);
         this.lastEditDate = parseDate(lastEditDate);
         this.lastOpenDate = parseDate(lastOpenDate);
@@ -251,7 +251,7 @@ public class Note implements Parcelable {
                 note.getServerID() != null &&
                 this.getServerID().equals(note.getServerID()) &&
                 this.getTitle().equals(note.getTitle()) &&
-                this.getDescription().equals(note.getTitle()) &&
+                this.getDescription().equals(note.getDescription()) &&
                 this.getCreated().equals(note.getCreated()) &&
                 this.getEdited().equals(note.getEdited()) &&
                 this.getViewed().equals(note.getViewed()) &&

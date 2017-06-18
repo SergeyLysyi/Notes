@@ -2,22 +2,22 @@
       xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
         android:id="@+id/action_fill"
-        android:orderInCategory="100"
-        app:showAsAction="always"
         android:icon="@android:drawable/ic_menu_add"
-        android:title="Fill"/>
+        android:orderInCategory="100"
+        android:title="Fill"
+        app:showAsAction="always"/>
     <item
         android:id="@+id/action_search"
-        android:orderInCategory="100"
-        app:showAsAction="always"
         android:icon="@android:drawable/ic_menu_search"
-        android:title="Search"/>
+        android:orderInCategory="100"
+        android:title="Search"
+        app:showAsAction="always"/>
     <item
         android:id="@+id/action_refresh"
-        android:orderInCategory="100"
-        app:showAsAction="always"
         android:icon="@android:drawable/ic_menu_rotate"
-        android:title="Clear Filters"/>
+        android:orderInCategory="100"
+        android:title="Clear Filters"
+        app:showAsAction="always"/>
     <item
         android:id="@+id/action_import"
         android:title="Import"/>
@@ -33,4 +33,8 @@
     <item
         android:id="@+id/action_manage_filters"
         android:title="Manage Filters"/>
+
+    <item
+        android:id="@+id/action_users"
+        android:title="Username"/>
 </menu>

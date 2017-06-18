@@ -344,5 +344,37 @@ public class NoteSaver extends SQLiteOpenHelper {
             return NoteSaver.this.getNotesCursor(sortByColumn, sortWithOrder, titleSubstring, descriptionSubstring,
                     columnForDateFilter, afterDate, beforeDate);
         }
+
+        Note getByID(int id) {
+            return getByInteger(id, COLUMN_ID);
+        }
+
+        Note getByServerID(int id) {
+            return getByInteger(id, COLUMN_SERVER_ID);
+        }
+
+        private Note getByInteger(int id, String selectionColumn) {
+            SQLiteDatabase db = getWritableDatabase();
+            String[] columns = {COLUMN_ID, COLUMN_SERVER_ID, COLUMN_TITLE, COLUMN_DESCRIPTION, COLUMN_COLOR,
+                    COLUMN_IMAGE_URL, COLUMN_CREATED, COLUMN_EDITED, COLUMN_VIEWED};
+            String selection = selectionColumn + " = " + id;
+            NoteCursor cursor = null;
+            Note note = null;
+            try {
+                cursor = new NoteCursor(db.query(
+                        TABLE_NOTES, columns, selection, null, null, null, null));
+                if (cursor.moveToFirst()) {
+                    note = cursor.getNote();
+                }
+            } catch (ParseException e) {
+                e.printStackTrace();
+                return null;
+            } finally {
+                if (cursor != null && !cursor.isClosed()) {
+                    cursor.close();
+                }
+            }
+            return note;
+        }
     }
 }

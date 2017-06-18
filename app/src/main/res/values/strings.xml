@@ -56,6 +56,17 @@
     <string name="notification_db_left_to_add">Notes left for save: %d</string>
     <string name="imageURL">URL Path To Image</string>
     <string name="load_from_url_error">Can\'t load image from that URL</string>
+    <string name="RemoteNotes_dialog_later_option">Decide later</string>
+    <string name="RemoteNotes_dialog_remote_option">Use remote</string>
+    <string name="RemoteNotes_dialog_local_option">Use local</string>
+    <string name="RemoteNotes_dialog_title">Choose source</string>
+    <string name="RemoteNotes_dialog_message">Local and remote notes are different.  What version to use ?</string>
+    <string name="user_add">Add new user</string>
+    <string name="add">Add</string>
+    <string name="new_user_username_not_empty">Username can\'t be empty</string>
+    <string name="new_user_id_not_empty">user id can\'t be empty</string>
+    <string name="item_user_id">id: %d</string>
+    <string name="main_menu_user">User: %s</string>
 
     <string-array name="sort_columns_list">
         <item>Title</item>

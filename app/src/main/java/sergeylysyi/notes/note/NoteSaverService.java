@@ -11,12 +11,14 @@ import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
+import android.support.annotation.Nullable;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import sergeylysyi.notes.R;
 
@@ -79,6 +81,10 @@ public class NoteSaverService extends Service {
 
     public interface OnGet {
         void onGet(List<Note> notes);
+    }
+
+    public interface OnGetSingle{
+        void onGetSingle(Note note);
     }
 
     public interface OnGetCursor {
@@ -170,6 +176,7 @@ public class NoteSaverService extends Service {
 
     public class LocalSaver extends NoteSaver {
         public static final int NOTIFICATION_DATA_BASE_OPERATIONS_ID = 102;
+        public final String TAG = LocalSaver.class.getName();
         private long overAllToAdd = 0;
         private Context context;
         private OnChange allDoneCallback = null;
@@ -261,7 +268,6 @@ public class NoteSaverService extends Service {
                         }
                     }
                     changeOverAllToAddByValueAndUpdate(-sizeOfEntriesToAdd);
-                    Log.i(TAG, String.format("pack of %d notes added to database", sizeOfEntriesToAdd));
                     if (handlerForCallback != null && callback != null) {
                         handlerForCallback.post(new Runnable() {
                             @Override
@@ -371,6 +377,40 @@ public class NoteSaverService extends Service {
                                 @Override
                                 public void run() {
                                     callback.onGetCursor(notes);
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+
+            public void getByIDLazy(final int id, final Handler handlerForCallback, final OnGetSingle callback) {
+                handlerSaver.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        final Note note = Query.super.getByID(id);
+                        if (handlerForCallback != null && callback != null) {
+                            handlerForCallback.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    callback.onGetSingle(note);
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+
+            public void getByServerIDLazy(final int id, final Handler handlerForCallback, final OnGetSingle callback) {
+                handlerSaver.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        final Note note = Query.super.getByServerID(id);
+                        if (handlerForCallback != null && callback != null) {
+                            handlerForCallback.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    callback.onGetSingle(note);
                                 }
                             });
                         }

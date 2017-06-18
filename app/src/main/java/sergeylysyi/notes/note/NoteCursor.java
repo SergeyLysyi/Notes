@@ -14,13 +14,12 @@ public class NoteCursor implements Closeable {
     }
 
     public Note getNote() throws ParseException {
-        Note note = new Note(cursor.getString(2), cursor.getString(3), cursor.getInt(4),
+        Note note = new Note(cursor.getString(2), cursor.getString(3), cursor.getInt(4), cursor.getString(5),
                 cursor.getString(6), cursor.getString(7), cursor.getString(8));
         note.setID(getID());
         if (!cursor.isNull(1)) {
             note.setServerID(cursor.getInt(1));
         }
-        note.setImageURL(cursor.getString(5));
         return note;
     }
 

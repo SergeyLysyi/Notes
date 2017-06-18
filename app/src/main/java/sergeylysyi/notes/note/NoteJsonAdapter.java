@@ -112,9 +112,7 @@ public class NoteJsonAdapter {
         }
 
         public Note getNote() throws ParseException {
-            Note note = new Note(title, description, Color.parseColor(color), created, edited, viewed);
-            note.setImageURL(imageUrl);
-            return note;
+            return new Note(title, description, Color.parseColor(color), imageUrl, created, edited, viewed);
         }
     }
 

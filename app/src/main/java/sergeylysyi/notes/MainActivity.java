@@ -1,27 +1,26 @@
 package sergeylysyi.notes;
 
 import android.Manifest;
-import android.app.Notification;
-import android.app.NotificationManager;
 import android.content.ActivityNotFoundException;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
+import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
-import android.os.Message;
-import android.os.Messenger;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
@@ -39,18 +38,18 @@ import java.util.Random;
 
 import sergeylysyi.notes.Dialogs.DialogInvoker;
 import sergeylysyi.notes.note.Note;
-import sergeylysyi.notes.note.NoteJsonImportExport;
 import sergeylysyi.notes.note.NoteSaver;
 import sergeylysyi.notes.note.NoteSaverService;
 import sergeylysyi.notes.note.NoteStorage;
+import sergeylysyi.notes.note.RemoteNotes.User;
 
 import static sergeylysyi.notes.EditActivity.INTENT_KEY_NOTE;
 import static sergeylysyi.notes.EditActivity.INTENT_KEY_NOTE_IS_CHANGED;
+import static sergeylysyi.notes.UserActivity.KEY_USER_ID;
+import static sergeylysyi.notes.UserActivity.KEY_USER_NAME;
+import static sergeylysyi.notes.UserActivity.REQUEST_USER;
 
-public class MainActivity extends AppCompatActivity implements
-        DialogInvoker.ResultListener,
-        ServiceConnection,
-        Handler.Callback {
+public class MainActivity extends AppCompatActivity implements DialogInvoker.ResultListener, ServiceConnection {
     public static final String DEFAULT_NOTE_TITLE = "Note";
     public static final String DEFAULT_NOTE_DESCRIPTION = "Hello";
     public static final String TAG = "MainActivity";
@@ -63,7 +62,8 @@ public class MainActivity extends AppCompatActivity implements
     public static final int[] COLORS_FOR_GENERATED = new int[]{Color.YELLOW, Color.RED, Color.BLUE, Color.BLACK, Color.GREEN};
     public static final String TITLE_PREFIX_FOR_GENERATED = "Generated Note ";
     public static final String DESCRIPTION_PREFIX_FOR_GENERATED = "Generated Description ";
-    public static final int NOTIFICATION_IMPORT_EXPORT_ID = 101;
+    public static final String DEFAULT_USER_NAME = "DefaultUser";
+    public static final int DEFAULT_USER_ID = 0;
     private static final int IMPORT_REQUEST_CODE = 10;
     private static final int EXPORT_REQUEST_CODE = 11;
     private static final int REQUEST_WRITE_STORAGE = 13;
@@ -71,11 +71,14 @@ public class MainActivity extends AppCompatActivity implements
     private static final String KEY_PREFIX = FiltersHolder.class.getName().concat("_");
     private static final String KEY_VERSION = KEY_PREFIX.concat("version");
     private static final String KEY_FILTER_SAVED = KEY_PREFIX.concat("filter_saved");
+    private static final String KEY_LAST_USER_NAME = KEY_PREFIX.concat("last_user_name");
+    private static final String KEY_LAST_USER_ID = KEY_PREFIX.concat("last_user_id");
+    public static final String ANDROID_NET_CONN_CONNECTIVITY_CHANGE = "android.net.conn.CONNECTIVITY_CHANGE";
     private final NoteSaver.NoteSortOrder defaultSortOrderPreference = NoteSaver.NoteSortOrder.descending;
     private final NoteSaver.NoteSortField defaultSortFieldPreference = NoteSaver.NoteSortField.created;
     private final NoteSaver.NoteDateField defaultDateFieldPreference = NoteSaver.NoteDateField.edited;
+    private NoteStorage.UninitializedStorage uninitializedStorage;
     private NoteStorage storage;
-    private NoteSaverService.LocalJson noteFileOperator;
     private DialogInvoker dialogInvoker;
     private FiltersHolder filtersHolder;
     private boolean search_on = false;
@@ -83,17 +86,61 @@ public class MainActivity extends AppCompatActivity implements
     private Note noteInChangingState;
     private String searchInTitle;
     private String searchInDescription;
-    private MessageHandlerImport messageHandlerImport = new MessageHandlerImport();
-    private MessageHandlerExport messageHandlerExport = new MessageHandlerExport();
+    private User currentUser;
+    private MenuItem userMenuItem;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        SharedPreferences settings = getPreferences(MODE_PRIVATE);
+
+        String version = settings.getString(KEY_VERSION, null);
+        boolean filterSaved = settings.getBoolean(KEY_FILTER_SAVED, false);
+        if (filterSaved) {
+            filtersHolder = FiltersHolder.fromSettings(settings);
+        } else {
+            filtersHolder = new FiltersHolder(
+                    defaultSortFieldPreference,
+                    defaultSortOrderPreference,
+                    defaultDateFieldPreference
+            );
+        }
+        boolean noUserFromSettings = false;
+
+        if (!settings.contains(KEY_LAST_USER_ID) || !settings.contains(KEY_LAST_USER_NAME))
+            noUserFromSettings = true;
+
+        int id = settings.getInt(KEY_LAST_USER_ID, DEFAULT_USER_ID);
+        String username = settings.getString(KEY_LAST_USER_NAME, DEFAULT_USER_NAME);
+        currentUser = new User(username, id);
+
+        if (noUserFromSettings) {
+            Log.i(TAG, "onCreate: no user from settings");
+            startActivityForResult(new Intent(this, UserActivity.class), REQUEST_USER);
+            return;
+        }
+
 //        deleteDatabase("Notes.db");
 
-        storage = new NoteStorage(this);
+        BroadcastReceiver receiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (intent.getAction().equals(ConnectivityManager.CONNECTIVITY_ACTION)) {
+                    ConnectivityManager cm = ((ConnectivityManager) context.getSystemService(CONNECTIVITY_SERVICE));
+                    if (cm.getActiveNetworkInfo() != null && cm.getActiveNetworkInfo().isAvailable()) {
+                        if (storage != null)
+                            storage.synchronize();
+                    }
+                }
+            }
+        };
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(ANDROID_NET_CONN_CONNECTIVITY_CHANGE);
+        registerReceiver(receiver, intentFilter);
+
+        uninitializedStorage = new NoteStorage.UninitializedStorage(this, currentUser);
 
         startService(new Intent(this, NoteSaverService.class));
 
@@ -101,7 +148,7 @@ public class MainActivity extends AppCompatActivity implements
 
         ListView lv = (ListView) findViewById(R.id.listView);
 
-        storage.setAdapterForView(lv);
+        uninitializedStorage.setAdapterForView(lv);
         lv.setEmptyView(findViewById(R.id.empty));
 
         if (savedInstanceState != null) {
@@ -117,20 +164,6 @@ public class MainActivity extends AppCompatActivity implements
                     enableSearch();
                 }
             }
-        }
-
-        SharedPreferences settings = getPreferences(MODE_PRIVATE);
-
-        String version = settings.getString(KEY_VERSION, null);
-        boolean filterSaved = settings.getBoolean(KEY_FILTER_SAVED, false);
-        if (filterSaved) {
-            filtersHolder = FiltersHolder.fromSettings(settings);
-        } else {
-            filtersHolder = new FiltersHolder(
-                    defaultSortFieldPreference,
-                    defaultSortOrderPreference,
-                    defaultDateFieldPreference
-            );
         }
     }
 
@@ -163,7 +196,7 @@ public class MainActivity extends AppCompatActivity implements
         int noteIndex = storage.getCount();
         Note note = new Note(getDefaultNoteTitleTextWithIndex(noteIndex),
                 DEFAULT_NOTE_DESCRIPTION,
-                getResources().getColor(R.color.colorPrimary));
+                getResources().getColor(R.color.colorPrimary), null);
         noteInChangingState = note;
         fillIntentWithNoteInfo(intent, note);
         startActivityForResult(intent, EditActivity.EDIT_NOTE);
@@ -222,14 +255,14 @@ public class MainActivity extends AppCompatActivity implements
         if (!hasIOExternalPermission()) {
             return;
         }
-        noteFileOperator.exportToFile(filename, new Messenger(new Handler(this)));
+        storage.exportToFile(filename);
     }
 
     private void importNotesFromFile(String filename) {
         if (!hasIOExternalPermission()) {
             return;
         }
-        noteFileOperator.importFromFile(filename, new Messenger(new Handler(this)));
+        storage.importFromFile(filename);
     }
 
     private boolean hasIOExternalPermission() {
@@ -268,21 +301,25 @@ public class MainActivity extends AppCompatActivity implements
                         });
                     }
                     break;
-
-                case IMPORT_REQUEST_CODE: {
+                case IMPORT_REQUEST_CODE:
                     if (data != null && data.getData() != null) {
                         String theFilePath = data.getData().getPath();
                         importNotesFromFile(theFilePath);
                     }
                     break;
-                }
-                case EXPORT_REQUEST_CODE: {
+                case EXPORT_REQUEST_CODE:
                     if (data != null && data.getData() != null) {
                         String theFilePath = data.getData().getPath();
                         exportNotesToFile(theFilePath);
                     }
                     break;
-                }
+                case REQUEST_USER:
+                    Log.i(TAG, "onActivityResult: UserActivity ");
+                    currentUser = new User(data.getStringExtra(KEY_USER_NAME),
+                            data.getIntExtra(KEY_USER_ID, DEFAULT_USER_ID));
+                    userMenuItem.setTitle(getString(R.string.main_menu_user, currentUser.getName()));
+                    storage.changeUser(currentUser);
+                    break;
             }
             super.onActivityResult(requestCode, resultCode, data);
         }
@@ -309,7 +346,9 @@ public class MainActivity extends AppCompatActivity implements
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.mainmenu, menu);
         searchMenuItem = menu.findItem(R.id.action_search);
+        userMenuItem = menu.findItem(R.id.action_users);
         updateSearchIcon();
+        userMenuItem.setTitle(getString(R.string.main_menu_user, currentUser.getName()));
         return true;
     }
 
@@ -348,6 +387,9 @@ public class MainActivity extends AppCompatActivity implements
             case R.id.action_manage_filters:
                 dialogInvoker.manageFiltersDialog(filtersHolder.getFilterNames(), this);
                 break;
+            case R.id.action_users:
+                Intent intent = new Intent(this, UserActivity.class);
+                startActivityForResult(intent, REQUEST_USER);
         }
         return super.onOptionsItemSelected(item);
     }
@@ -360,7 +402,8 @@ public class MainActivity extends AppCompatActivity implements
                 list.add(new Note(
                         getGeneratedTitle(i),
                         getGeneratedDescription(i),
-                        getRandomColor(r)));
+                        getRandomColor(r),
+                        null));
                 i++;
             }
             Log.i(TAG, "fillAndUpload: launched to index " + i);
@@ -424,6 +467,8 @@ public class MainActivity extends AppCompatActivity implements
         SharedPreferences.Editor editor = prefs.edit();
         editor.putString(KEY_VERSION, SHARED_PREFERENCES_VERSION);
         editor.putBoolean(KEY_FILTER_SAVED, true);
+        editor.putString(KEY_LAST_USER_NAME, currentUser.getName());
+        editor.putInt(KEY_LAST_USER_ID, currentUser.getUserID());
         filtersHolder.storeToPreferences(prefs);
         editor.apply();
         unbindService(this);
@@ -481,85 +526,14 @@ public class MainActivity extends AppCompatActivity implements
     public void onServiceConnected(ComponentName name, IBinder service) {
         Log.i(getLocalClassName(), "Service bound");
         NoteSaverService.LocalBinder binder = ((NoteSaverService.LocalBinder) service);
-        storage.finishInitFromBinder(binder);
-        noteFileOperator = binder.getFileOperator();
-        storage.update(filtersHolder.getCurrentFilterCopy());
+        if (uninitializedStorage != null) {
+            storage = uninitializedStorage.initStorage(binder).getStorage();
+            storage.update(filtersHolder.getCurrentFilterCopy());
+        }
     }
 
     @Override
     public void onServiceDisconnected(ComponentName name) {
         Log.i(getLocalClassName(), "Service unbound");
-    }
-
-    @Override
-    public boolean handleMessage(Message msg) {
-        if (noteFileOperator == null || !noteFileOperator.isMessageFromJsonSender(msg))
-            return false;
-        noteFileOperator.translateMessage(
-                msg,
-                messageHandlerImport,
-                messageHandlerImport,
-                messageHandlerExport,
-                messageHandlerExport);
-        return true;
-    }
-
-    private class MessageHandlerImport implements
-            NoteJsonImportExport.ProgressCallback,
-            NoteJsonImportExport.FinishCallback {
-
-        @Override
-        public void onProgress(double percentDone) {
-            storage.update(filtersHolder.getCurrentFilterCopy());
-            Notification not = new NotificationCompat.Builder(MainActivity.this)
-                    .setSmallIcon(android.R.drawable.btn_star)
-                    .setContentTitle(getString(R.string.app_name))
-                    .setContentText(getString(R.string.notification_import_progress, percentDone)).build();
-            ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).notify(NOTIFICATION_IMPORT_EXPORT_ID, not);
-        }
-
-        @Override
-        public void onFinish(boolean isSucceed) {
-            String result;
-            if (isSucceed) {
-                storage.update(filtersHolder.getCurrentFilterCopy());
-                result = getString(R.string.notification_success);
-            } else {
-                result = getString(R.string.notification_failed);
-            }
-            Notification not = new NotificationCompat.Builder(MainActivity.this)
-                    .setSmallIcon(android.R.drawable.btn_star)
-                    .setContentTitle(getString(R.string.app_name))
-                    .setContentText(getString(R.string.notification_import_finish, result)).build();
-            ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).notify(NOTIFICATION_IMPORT_EXPORT_ID, not);
-        }
-    }
-
-    private class MessageHandlerExport implements
-            NoteJsonImportExport.ProgressCallback,
-            NoteJsonImportExport.FinishCallback {
-
-        @Override
-        public void onProgress(double percentDone) {
-            Notification not = new NotificationCompat.Builder(MainActivity.this)
-                    .setSmallIcon(android.R.drawable.btn_star)
-                    .setContentTitle(getString(R.string.app_name))
-                    .setContentText(getString(R.string.notification_export_progress, percentDone)).build();
-            ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).notify(NOTIFICATION_IMPORT_EXPORT_ID, not);
-        }
-
-        @Override
-        public void onFinish(boolean isSucceed) {
-            String result;
-            if (isSucceed)
-                result = getString(R.string.notification_success);
-            else
-                result = getString(R.string.notification_failed);
-            Notification not = new NotificationCompat.Builder(MainActivity.this)
-                    .setSmallIcon(android.R.drawable.btn_star)
-                    .setContentTitle(getString(R.string.app_name))
-                    .setContentText(getString(R.string.notification_export_finish, result)).build();
-            ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).notify(NOTIFICATION_IMPORT_EXPORT_ID, not);
-        }
     }
 }

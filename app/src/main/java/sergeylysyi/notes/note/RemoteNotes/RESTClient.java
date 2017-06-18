@@ -100,7 +100,8 @@ public class RESTClient {
             @Override
             public void error(Errors e) {
                 if (!(e instanceof Errors.UnparsableRecord)) {
-                    fatalErr.error(e);
+                    if (fatalErr != null)
+                        fatalErr.error(e);
                 }
             }
         });
@@ -119,7 +120,8 @@ public class RESTClient {
                 public void success(Integer data) {
                     Map<Note, Integer> m = new HashMap<>();
                     m.put(note, data);
-                    cb.success(m);
+                    if (cb != null)
+                        cb.success(m);
                 }
             }, err);
         }

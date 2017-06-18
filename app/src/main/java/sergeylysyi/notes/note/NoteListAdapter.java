@@ -4,6 +4,7 @@ import android.content.Context;
 import android.support.annotation.LayoutRes;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,6 +23,8 @@ import sergeylysyi.notes.R;
 
 
 public class NoteListAdapter extends ArrayAdapter<Note> {
+    public static final String TAG = NoteListAdapter.class.getName();
+
     private final LayoutInflater inflater;
     private final int resource;
     private NoteCursor cursor;
@@ -103,10 +106,14 @@ public class NoteListAdapter extends ArrayAdapter<Note> {
         }
 
         Note note = getItem(position);
-        holder.position = position;
-        holder.header.setText(note.getTitle());
-        holder.body.setText(note.getDescription());
-        holder.rectangle.setBackgroundColor(note.getColor());
+        if (note == null) {
+            Log.w(TAG, "getView: ", new NullPointerException());
+        } else {
+            holder.position = position;
+            holder.header.setText(note.getTitle());
+            holder.body.setText(note.getDescription());
+            holder.rectangle.setBackgroundColor(note.getColor());
+        }
 
         return convertView;
     }
