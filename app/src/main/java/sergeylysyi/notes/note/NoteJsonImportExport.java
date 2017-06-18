@@ -42,8 +42,8 @@ public class NoteJsonImportExport extends Handler {
         this.saver = saver;
     }
 
-    private void notesToJson(final OutputStream outputStream, final RunnableFactory factory) {
-        saver.new Query().getCursorWithCallback(this, new NoteSaverService.OnGetCursor() {
+    private void notesToJson(NoteSaver.DBUser user, final OutputStream outputStream, final RunnableFactory factory) {
+        saver.new Query().getCursorWithCallback(user, this, new NoteSaverService.OnGetCursor() {
             @Override
             public void onGetCursor(NoteCursor cursor) {
                 NoteJsonAdapter noteJsonAdapter = new NoteJsonAdapter();
@@ -80,21 +80,21 @@ public class NoteJsonImportExport extends Handler {
         });
     }
 
-    private void notesFromJson(InputStream inputStream, RunnableFactory factory) throws IOException, ParseException {
+    private void notesFromJson(NoteSaver.DBUser user, InputStream inputStream, RunnableFactory factory) throws IOException, ParseException {
         NoteJsonAdapter arj = new NoteJsonAdapter();
         arj.startUnpack(inputStream);
         List<Note> pack;
         saver.clearWithCallback(null, null);
         do {
             pack = arj.readNextPack(IMPORT_PACK_SIZE);
-            saver.insertOrUpdateManyWithCallback(pack, null, null);
+            saver.insertOrUpdateManyWithCallback(user, pack, null, null);
             double percentDone = 100 * Math.min(1 - arj.unpackFractionLeft(), 1);
             factory.getProgressRunnable(percentDone).run();
         } while (pack.size() >= IMPORT_PACK_SIZE);
         factory.getFinishRunnable(true).run();
     }
 
-    public void exportTo(final File file, final Messenger forReports) {
+    public void exportTo(NoteSaver.DBUser user, final File file, final Messenger forReports) {
         final Toast toastOnFail = Toast.makeText(context,
                 context.getString(R.string.export_error_toast_string_formatted, file.getAbsolutePath()),
                 Toast.LENGTH_LONG);
@@ -141,10 +141,10 @@ public class NoteJsonImportExport extends Handler {
             toastOnFail.show();
             return;
         }
-        notesToJson(fos, factory);
+        notesToJson(user, fos, factory);
     }
 
-    private void importFrom(File file, final Messenger forReports) {
+    private void importFrom(NoteSaver.DBUser user, File file, final Messenger forReports) {
         final String filename = file.getAbsolutePath();
         RunnableFactory runnableFactory = new RunnableFactory();
         runnableFactory.setProgressCallback(new ProgressCallback() {
@@ -177,7 +177,7 @@ public class NoteJsonImportExport extends Handler {
         try {
             FileInputStream fis = new FileInputStream(file);
             try {
-                notesFromJson(fis, runnableFactory);
+                notesFromJson(user, fis, runnableFactory);
             } finally {
                 fis.close();
             }
@@ -195,12 +195,17 @@ public class NoteJsonImportExport extends Handler {
     }
 
     @Override
-    public void handleMessage(Message msg) {
+    public void handleMessage(final Message msg) {
         Messenger m = msg.replyTo;
         switch (msg.what) {
             case REQUEST_IMPORT:
                 if (msg.obj instanceof File) {
-                    importFrom((File) msg.obj, m);
+                    importFrom(new NoteSaver.DBUser() {
+                        @Override
+                        public int getUserID() {
+                            return msg.arg1;
+                        }
+                    }, (File) msg.obj, m);
                 } else {
                     IllegalArgumentException e = new IllegalArgumentException(MSG_IMPORT_ILLEGAL_ARGUMENT);
                     e.printStackTrace();
@@ -208,7 +213,12 @@ public class NoteJsonImportExport extends Handler {
                 break;
             case REQUEST_EXPORT:
                 if (msg.obj instanceof File) {
-                    exportTo((File) msg.obj, m);
+                    exportTo(new NoteSaver.DBUser() {
+                        @Override
+                        public int getUserID() {
+                            return msg.arg1;
+                        }
+                    }, (File) msg.obj, m);
                 } else {
                     IllegalArgumentException e = new IllegalArgumentException(MSG_EXPORT_ILLEGAL_ARGUMENT);
                     e.printStackTrace();

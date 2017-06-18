@@ -18,10 +18,10 @@ public class RESTClient {
     public static final String TAG = RESTClient.class.getName();
 
     private final IServer s;
-    private final User user;
+    private final RemoteUser user;
     private final Handler handler;
 
-    public RESTClient(String serverURL, User forUser) {
+    public RESTClient(String serverURL, RemoteUser forUser) {
 
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(serverURL)
@@ -125,5 +125,9 @@ public class RESTClient {
                 }
             }, err);
         }
+    }
+
+    public interface RemoteUser {
+        int getUserID();
     }
 }

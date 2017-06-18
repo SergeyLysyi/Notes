@@ -18,6 +18,7 @@ public class NoteSaver extends SQLiteOpenHelper {
     public static final String TAG = NoteSaver.class.getName();
     private static final String COLUMN_ID = BaseColumns._ID;
     private static final String COLUMN_SERVER_ID = "ServerID";
+    private static final String COLUMN_USER_ID = "UserID";
     private static final String COLUMN_TITLE = "Title";
     private static final String COLUMN_DESCRIPTION = "Description";
     private static final String COLUMN_COLOR = "Color";
@@ -33,9 +34,9 @@ public class NoteSaver extends SQLiteOpenHelper {
     private static final String DEFAULT_SORT_COLUMN = COLUMN_ID;
     private static final String DEFAULT_SORT_ORDER = SORT_ORDER_ASCENDING;
     private static final String CREATE_TABLE_QUERY = String.format(
-            "CREATE TABLE %s (%s INTEGER PRIMARY KEY AUTOINCREMENT, %s INTEGER, %s TEXT, %s TEXT, %s INTEGER, %s TEXT," +
+            "CREATE TABLE %s (%s INTEGER PRIMARY KEY AUTOINCREMENT, %s INTEGER, %s INTEGER, %s TEXT, %s TEXT, %s INTEGER, %s TEXT," +
                     " %s TEXT, %s TEXT, %s TEXT)",
-            TABLE_NOTES, COLUMN_ID, COLUMN_SERVER_ID, COLUMN_TITLE, COLUMN_DESCRIPTION, COLUMN_COLOR, COLUMN_IMAGE_URL,
+            TABLE_NOTES, COLUMN_ID, COLUMN_SERVER_ID, COLUMN_USER_ID, COLUMN_TITLE, COLUMN_DESCRIPTION, COLUMN_COLOR, COLUMN_IMAGE_URL,
             COLUMN_CREATED, COLUMN_EDITED, COLUMN_VIEWED);
     private static final String DROP_TABLE_QUERY = String.format("DROP TABLE IF EXISTS %s", TABLE_NOTES);
 
@@ -48,25 +49,26 @@ public class NoteSaver extends SQLiteOpenHelper {
         db.execSQL(CREATE_TABLE_QUERY);
     }
 
-    private long addNote(Note note) {
+    private long addNote(DBUser user, Note note) {
         SQLiteDatabase db = getWritableDatabase();
-        ContentValues values = getNoteContentValues(note);
+        ContentValues values = getNoteContentValues(user, note);
         long result = db.insert(TABLE_NOTES, null, values);
         note.setID(result);
         return result;
     }
 
-    private int updateNote(Note note) {
+    private int updateNote(DBUser user, Note note) {
         SQLiteDatabase db = getWritableDatabase();
-        ContentValues values = getNoteContentValues(note);
+        ContentValues values = getNoteContentValues(user, note);
         String selection = COLUMN_ID + " = ?";
         String[] selectionArgs = {String.valueOf(note.getID())};
         return db.update(TABLE_NOTES, values, selection, selectionArgs);
     }
 
-    private ContentValues getNoteContentValues(Note note) {
+    private ContentValues getNoteContentValues(DBUser user,Note note) {
         ContentValues values = new ContentValues();
         values.put(COLUMN_SERVER_ID, note.getServerID());
+        values.put(COLUMN_USER_ID, user.getUserID());
         values.put(COLUMN_TITLE, note.getTitle());
         values.put(COLUMN_DESCRIPTION, note.getDescription());
         values.put(COLUMN_COLOR, note.getColor());
@@ -77,10 +79,10 @@ public class NoteSaver extends SQLiteOpenHelper {
         return values;
     }
 
-    public boolean insertOrUpdate(Note note) {
-        long result = updateNote(note);
+    public boolean insertOrUpdate(DBUser user, Note note) {
+        long result = updateNote(user, note);
         if (result == 0) {
-            result = addNote(note);
+            result = addNote(user, note);
         }
         return result <= 0;
     }
@@ -122,12 +124,15 @@ public class NoteSaver extends SQLiteOpenHelper {
         }
     }
 
-    protected List<Note> getNotes(String sortByColumn, String order,
-                                  String titleSubstring, String descriptionSubstring,
-                                  final String columnForDateFilter, final GregorianCalendar afterDate, final GregorianCalendar beforeDate) {
+    protected List<Note> getNotes(
+            DBUser user,
+            String sortByColumn, String order,
+            String titleSubstring, String descriptionSubstring,
+            final String columnForDateFilter, final GregorianCalendar afterDate, final GregorianCalendar beforeDate) {
 
         List<Note> resultNotes = new ArrayList<>();
         NoteCursor cursor = getNotesCursor(
+                user,
                 sortByColumn, order, titleSubstring, descriptionSubstring,
                 columnForDateFilter, afterDate, beforeDate);
         try {
@@ -151,7 +156,8 @@ public class NoteSaver extends SQLiteOpenHelper {
         return resultNotes;
     }
 
-    protected NoteCursor getNotesCursor(String sortByColumn, String order,
+    protected NoteCursor getNotesCursor(DBUser user,
+                                        String sortByColumn, String order,
                                         String titleSubstring, String descriptionSubstring,
                                         final String columnForDateFilter, final GregorianCalendar afterDate,
                                         final GregorianCalendar beforeDate) {
@@ -185,11 +191,14 @@ public class NoteSaver extends SQLiteOpenHelper {
 
         SQLiteDatabase db = getReadableDatabase();
 
-        String[] columns = {COLUMN_ID, COLUMN_SERVER_ID, COLUMN_TITLE, COLUMN_DESCRIPTION, COLUMN_COLOR, COLUMN_IMAGE_URL,
+        String[] columns = {COLUMN_ID, COLUMN_SERVER_ID, COLUMN_USER_ID, COLUMN_TITLE, COLUMN_DESCRIPTION, COLUMN_COLOR, COLUMN_IMAGE_URL,
                 COLUMN_CREATED, COLUMN_EDITED, COLUMN_VIEWED};
-        String selection = "";
+        String selection = COLUMN_USER_ID + "=" + user.getUserID();
         //TODO: protect from injecting
         if (titleSubstring != null && titleSubstring.length() > 0) {
+            if (selection.length() > 0) {
+                selection += " AND ";
+            }
             selection += String.format("%s LIKE \"%%%s%%\"", COLUMN_TITLE, titleSubstring);
         }
         if (descriptionSubstring != null && descriptionSubstring.length() > 0) {
@@ -235,6 +244,10 @@ public class NoteSaver extends SQLiteOpenHelper {
 
     public enum NoteDateField {created, edited, viewed}
 
+
+    public interface DBUser {
+        int getUserID();
+    }
 
     static public class QueryFilter {
         public NoteSortOrder sortOrder;
@@ -335,13 +348,13 @@ public class NoteSaver extends SQLiteOpenHelper {
             return this;
         }
 
-        public List<Note> get() {
-            return NoteSaver.this.getNotes(sortByColumn, sortWithOrder, titleSubstring, descriptionSubstring,
+        public List<Note> get(DBUser user) {
+            return NoteSaver.this.getNotes(user, sortByColumn, sortWithOrder, titleSubstring, descriptionSubstring,
                     columnForDateFilter, afterDate, beforeDate);
         }
 
-        public NoteCursor getCursor() {
-            return NoteSaver.this.getNotesCursor(sortByColumn, sortWithOrder, titleSubstring, descriptionSubstring,
+        public NoteCursor getCursor(DBUser user) {
+            return NoteSaver.this.getNotesCursor(user, sortByColumn, sortWithOrder, titleSubstring, descriptionSubstring,
                     columnForDateFilter, afterDate, beforeDate);
         }
 

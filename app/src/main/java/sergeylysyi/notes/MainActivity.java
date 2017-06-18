@@ -41,7 +41,6 @@ import sergeylysyi.notes.note.Note;
 import sergeylysyi.notes.note.NoteSaver;
 import sergeylysyi.notes.note.NoteSaverService;
 import sergeylysyi.notes.note.NoteStorage;
-import sergeylysyi.notes.note.RemoteNotes.User;
 
 import static sergeylysyi.notes.EditActivity.INTENT_KEY_NOTE;
 import static sergeylysyi.notes.EditActivity.INTENT_KEY_NOTE_IS_CHANGED;
@@ -64,6 +63,7 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
     public static final String DESCRIPTION_PREFIX_FOR_GENERATED = "Generated Description ";
     public static final String DEFAULT_USER_NAME = "DefaultUser";
     public static final int DEFAULT_USER_ID = 0;
+    public static final String ANDROID_NET_CONN_CONNECTIVITY_CHANGE = "android.net.conn.CONNECTIVITY_CHANGE";
     private static final int IMPORT_REQUEST_CODE = 10;
     private static final int EXPORT_REQUEST_CODE = 11;
     private static final int REQUEST_WRITE_STORAGE = 13;
@@ -73,7 +73,6 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
     private static final String KEY_FILTER_SAVED = KEY_PREFIX.concat("filter_saved");
     private static final String KEY_LAST_USER_NAME = KEY_PREFIX.concat("last_user_name");
     private static final String KEY_LAST_USER_ID = KEY_PREFIX.concat("last_user_id");
-    public static final String ANDROID_NET_CONN_CONNECTIVITY_CHANGE = "android.net.conn.CONNECTIVITY_CHANGE";
     private final NoteSaver.NoteSortOrder defaultSortOrderPreference = NoteSaver.NoteSortOrder.descending;
     private final NoteSaver.NoteSortField defaultSortFieldPreference = NoteSaver.NoteSortField.created;
     private final NoteSaver.NoteDateField defaultDateFieldPreference = NoteSaver.NoteDateField.edited;
@@ -88,6 +87,7 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
     private String searchInDescription;
     private User currentUser;
     private MenuItem userMenuItem;
+    private BroadcastReceiver receiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -119,12 +119,11 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
         if (noUserFromSettings) {
             Log.i(TAG, "onCreate: no user from settings");
             startActivityForResult(new Intent(this, UserActivity.class), REQUEST_USER);
-            return;
         }
 
 //        deleteDatabase("Notes.db");
 
-        BroadcastReceiver receiver = new BroadcastReceiver() {
+        receiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 if (intent.getAction().equals(ConnectivityManager.CONNECTIVITY_ACTION)) {
@@ -140,7 +139,8 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
         intentFilter.addAction(ANDROID_NET_CONN_CONNECTIVITY_CHANGE);
         registerReceiver(receiver, intentFilter);
 
-        uninitializedStorage = new NoteStorage.UninitializedStorage(this, currentUser);
+        if (uninitializedStorage == null)
+            uninitializedStorage = new NoteStorage.UninitializedStorage(this, currentUser);
 
         startService(new Intent(this, NoteSaverService.class));
 
@@ -314,11 +314,13 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
                     }
                     break;
                 case REQUEST_USER:
-                    Log.i(TAG, "onActivityResult: UserActivity ");
                     currentUser = new User(data.getStringExtra(KEY_USER_NAME),
                             data.getIntExtra(KEY_USER_ID, DEFAULT_USER_ID));
                     userMenuItem.setTitle(getString(R.string.main_menu_user, currentUser.getName()));
-                    storage.changeUser(currentUser);
+                    if (storage != null)
+                        storage.changeUser(currentUser);
+                    else
+                        Log.w(TAG, "onActivityResult: !!! storage is null !!!", new NullPointerException());
                     break;
             }
             super.onActivityResult(requestCode, resultCode, data);
@@ -476,6 +478,7 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
 
     @Override
     protected void onDestroy() {
+        unregisterReceiver(receiver);
         storage.close();
         super.onDestroy();
     }
@@ -524,9 +527,9 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
 
     @Override
     public void onServiceConnected(ComponentName name, IBinder service) {
-        Log.i(getLocalClassName(), "Service bound");
+        Log.i(TAG, "onServiceConnected");
         NoteSaverService.LocalBinder binder = ((NoteSaverService.LocalBinder) service);
-        if (uninitializedStorage != null) {
+        if (uninitializedStorage != null && storage == null) {
             storage = uninitializedStorage.initStorage(binder).getStorage();
             storage.update(filtersHolder.getCurrentFilterCopy());
         }

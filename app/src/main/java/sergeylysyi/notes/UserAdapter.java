@@ -11,8 +11,6 @@ import android.widget.TextView;
 
 import java.util.List;
 
-import sergeylysyi.notes.note.RemoteNotes.User;
-
 
 public class UserAdapter extends RecyclerView.Adapter<UserAdapter.ViewHolder> {
     public static final String TAG = UserAdapter.class.getName();

@@ -11,14 +11,12 @@ import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
-import android.support.annotation.Nullable;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 
 import sergeylysyi.notes.R;
 
@@ -83,7 +81,7 @@ public class NoteSaverService extends Service {
         void onGet(List<Note> notes);
     }
 
-    public interface OnGetSingle{
+    public interface OnGetSingle {
         void onGetSingle(Note note);
     }
 
@@ -103,20 +101,22 @@ public class NoteSaverService extends Service {
 
     public class LocalJson {
 
-        public void exportToFile(String filename, Messenger replyTo) {
+        public void exportToFile(NoteSaver.DBUser user, String filename, Messenger replyTo) {
             File file = new File(filename);
             Message m = new Message();
             m.what = NoteJsonImportExport.REQUEST_EXPORT;
             m.obj = file;
+            m.arg1 = user.getUserID();
             m.replyTo = replyTo;
             handlerImportExport.sendMessage(m);
         }
 
-        public void importFromFile(String filename, Messenger replyTo) {
+        public void importFromFile(NoteSaver.DBUser user, String filename, Messenger replyTo) {
             File file = new File(filename);
             Message m = new Message();
             m.what = NoteJsonImportExport.REQUEST_IMPORT;
             m.obj = file;
+            m.arg1 = user.getUserID();
             m.replyTo = replyTo;
             handlerImportExport.sendMessage(m);
         }
@@ -234,14 +234,14 @@ public class NoteSaverService extends Service {
             updateSaverNotification(getOverAllToAdd());
         }
 
-        public void insertOrUpdateWithCallback(final Note note, final Handler handlerForCallback, final OnChange callback) {
+        public void insertOrUpdateWithCallback(final DBUser user, final Note note, final Handler handlerForCallback, final OnChange callback) {
             final int sizeOfEntriesToAdd = 1;
             changeOverAllToAddByValueAndUpdate(sizeOfEntriesToAdd);
             handlerSaver.postAtFrontOfQueue(new Runnable() {
                 @Override
                 public void run() {
                     if (!isClearCommandFollowInQueue()) {
-                        LocalSaver.super.insertOrUpdate(note);
+                        LocalSaver.super.insertOrUpdate(user, note);
                     }
                     changeOverAllToAddByValueAndUpdate(-sizeOfEntriesToAdd);
                     if (handlerForCallback != null && callback != null) {
@@ -256,7 +256,7 @@ public class NoteSaverService extends Service {
             });
         }
 
-        public void insertOrUpdateManyWithCallback(final List<Note> notes, final Handler handlerForCallback, final OnChange callback) {
+        public void insertOrUpdateManyWithCallback(final DBUser user, final List<Note> notes, final Handler handlerForCallback, final OnChange callback) {
             final int sizeOfEntriesToAdd = notes.size();
             changeOverAllToAddByValueAndUpdate(sizeOfEntriesToAdd);
             handlerSaver.post(new Runnable() {
@@ -264,7 +264,7 @@ public class NoteSaverService extends Service {
                 public void run() {
                     if (!isClearCommandFollowInQueue()) {
                         for (Note note : notes) {
-                            LocalSaver.super.insertOrUpdate(note);
+                            LocalSaver.super.insertOrUpdate(user, note);
                         }
                     }
                     changeOverAllToAddByValueAndUpdate(-sizeOfEntriesToAdd);
@@ -281,8 +281,8 @@ public class NoteSaverService extends Service {
         }
 
         @Override
-        public boolean insertOrUpdate(Note note) {
-            insertOrUpdateWithCallback(note, null, null);
+        public boolean insertOrUpdate(DBUser user,Note note) {
+            insertOrUpdateWithCallback(user, note, null, null);
             // runnable almost never will be executed immediately, so return value is false;
             return true;
         }
@@ -350,11 +350,11 @@ public class NoteSaverService extends Service {
         }
 
         public class Query extends NoteSaver.Query {
-            public void getWithCallback(final Handler handlerForCallback, final OnGet callback) {
+            public void getWithCallback(final DBUser user, final Handler handlerForCallback, final OnGet callback) {
                 handlerSaver.postAtFrontOfQueue(new Runnable() {
                     @Override
                     public void run() {
-                        final List<Note> notes = Query.super.get();
+                        final List<Note> notes = Query.super.get(user);
                         if (handlerForCallback != null && callback != null) {
                             handlerForCallback.post(new Runnable() {
                                 @Override
@@ -367,11 +367,11 @@ public class NoteSaverService extends Service {
                 });
             }
 
-            public void getCursorWithCallback(final Handler handlerForCallback, final OnGetCursor callback) {
+            public void getCursorWithCallback(final DBUser user, final Handler handlerForCallback, final OnGetCursor callback) {
                 handlerSaver.postAtFrontOfQueue(new Runnable() {
                     @Override
                     public void run() {
-                        final NoteCursor notes = Query.super.getCursor();
+                        final NoteCursor notes = Query.super.getCursor(user);
                         if (handlerForCallback != null && callback != null) {
                             handlerForCallback.post(new Runnable() {
                                 @Override
@@ -419,9 +419,9 @@ public class NoteSaverService extends Service {
             }
 
             @Override
-            public List<Note> get() {
+            public List<Note> get(DBUser user) {
                 final List<Note> result = new ArrayList<>();
-                getWithCallback(handlerSaver, new OnGet() {
+                getWithCallback(user, handlerSaver, new OnGet() {
                     @Override
                     public void onGet(List<Note> notes) {
                         result.addAll(notes);
@@ -434,8 +434,8 @@ public class NoteSaverService extends Service {
              * method is synchronous.
              */
             @Override
-            public NoteCursor getCursor() {
-                return super.getCursor();
+            public NoteCursor getCursor(DBUser user) {
+                return super.getCursor(user);
             }
         }
     }

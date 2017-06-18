@@ -1,6 +1,9 @@
-package sergeylysyi.notes.note.RemoteNotes;
+package sergeylysyi.notes;
 
-public class User {
+import sergeylysyi.notes.note.NoteSaver;
+import sergeylysyi.notes.note.RemoteNotes.RESTClient;
+
+public class User implements NoteSaver.DBUser, RESTClient.RemoteUser {
     private int userID;
     private String name;
 

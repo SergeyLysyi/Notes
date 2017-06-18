@@ -24,8 +24,6 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 
-import sergeylysyi.notes.note.RemoteNotes.User;
-
 
 public class UserActivity extends AppCompatActivity implements UserAdapter.OnUserClick {
     public static final String TAG = UserActivity.class.getName();
@@ -51,7 +49,9 @@ public class UserActivity extends AppCompatActivity implements UserAdapter.OnUse
         SharedPreferences sharedPreferences = getPreferences(MODE_PRIVATE);
         String json = sharedPreferences.getString(USERS_ARRAY, "");
         try {
-            users = jsonUserAdapter.fromJson(json);
+            if (!"".equals(json)) {
+                users = jsonUserAdapter.fromJson(json);
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }

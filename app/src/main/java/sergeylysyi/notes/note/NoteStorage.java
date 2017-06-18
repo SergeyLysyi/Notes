@@ -7,6 +7,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Messenger;
 import android.support.v4.app.NotificationCompat;
+import android.util.Log;
 import android.widget.ListView;
 
 import java.io.Closeable;
@@ -26,7 +27,7 @@ import sergeylysyi.notes.note.RemoteNotes.Errors;
 import sergeylysyi.notes.note.RemoteNotes.OnError;
 import sergeylysyi.notes.note.RemoteNotes.OnSuccess;
 import sergeylysyi.notes.note.RemoteNotes.RESTClient;
-import sergeylysyi.notes.note.RemoteNotes.User;
+import sergeylysyi.notes.User;
 
 import static android.content.Context.NOTIFICATION_SERVICE;
 
@@ -37,6 +38,7 @@ public class NoteStorage implements Closeable, Handler.Callback {
     private static final String ServerURL = "https://notesbackend-yufimtsev.rhcloud.com/";
     private final Context context;
     private RESTClient rc;
+    private User user;
     private final NoteListAdapter adapter;
     private final AtomicReference<NoteSaverService.OnChange> onChangeDelegate;
     private NoteSaverService.LocalSaver saver;
@@ -59,20 +61,22 @@ public class NoteStorage implements Closeable, Handler.Callback {
 
     private NoteStorage(Context context, NoteSaverService.LocalBinder service, NoteListAdapter adapter, User user) {
         this.context = context;
-        rc = new RESTClient(ServerURL, user);
-        this.adapter = adapter;
         saver = service.getSaver();
+        this.adapter = adapter;
         noteFileOperator = service.getFileOperator();
         saver.setAllFinishedCallback(new Handler(), onChangeDelegate.get());
-        synchronize();
+        changeUser(user);
     }
 
     public void changeUser(User user){
+        this.user = user;
         rc = new RESTClient(ServerURL, user);
+        update(filter);
+        synchronize();
     }
 
     public void synchronize() {
-        final List<Note> localNotes = saver.new Query().get();
+        final List<Note> localNotes = saver.new Query().get(user);
         rc.getAll(new OnSuccess<List<Note>>() {
             @Override
             public void success(List<Note> remoteNotes) {
@@ -115,6 +119,7 @@ public class NoteStorage implements Closeable, Handler.Callback {
                                         @Override
                                         public void run() {
                                             saver.insertOrUpdateManyWithCallback(
+                                                    user,
                                                     new ArrayList<>(differentRemote),
                                                     new Handler(),
                                                     onChangeDelegate.get()
@@ -147,7 +152,7 @@ public class NoteStorage implements Closeable, Handler.Callback {
                     public void success(Map<Note, Integer> data) {
                         for (Note note : data.keySet()) {
                             note.setServerID(data.get(note));
-                            saver.insertOrUpdateWithCallback(note, null, null);
+                            saver.insertOrUpdateWithCallback(user, note, null, null);
                         }
                     }
                 }, null);
@@ -159,9 +164,9 @@ public class NoteStorage implements Closeable, Handler.Callback {
                                 @Override
                                 public void onGetSingle(Note note) {
                                     if (note != null) {
-                                        saver.insertOrUpdateWithCallback(note, new Handler(), onChangeDelegate.get());
+                                        saver.insertOrUpdateWithCallback(user, note, new Handler(), onChangeDelegate.get());
                                     } else {
-                                        saver.insertOrUpdateWithCallback(remote, new Handler(), onChangeDelegate.get());
+                                        saver.insertOrUpdateWithCallback(user, remote, new Handler(), onChangeDelegate.get());
                                     }
                                 }
                             });
@@ -179,14 +184,14 @@ public class NoteStorage implements Closeable, Handler.Callback {
     }
 
     public void addNotes(final List<Note> notes) {
-        saver.insertOrUpdateManyWithCallback(notes, new Handler(), onChangeDelegate.get());
+        saver.insertOrUpdateManyWithCallback(user, notes, new Handler(), onChangeDelegate.get());
 
         rc.addAll(notes, new OnSuccess<Map<Note, Integer>>() {
             @Override
             public void success(Map<Note, Integer> data) {
                 for (Note note : data.keySet()) {
                     note.setServerID(data.get(note));
-                    saver.insertOrUpdateWithCallback(note, null, null);
+                    saver.insertOrUpdateWithCallback(user, note, null, null);
                 }
             }
         }, null);
@@ -215,7 +220,7 @@ public class NoteStorage implements Closeable, Handler.Callback {
                         @Override
                         public void success(Integer data) {
                             oldNote.setServerID(data);
-                            saver.insertOrUpdateWithCallback(oldNote, null, onChangeDelegate.get());
+                            saver.insertOrUpdateWithCallback(user, oldNote, null, onChangeDelegate.get());
                         }
                     }, retryCallback);
                 else
@@ -231,7 +236,7 @@ public class NoteStorage implements Closeable, Handler.Callback {
         };
 
         if (oldNote.getID() == null) {
-            saver.insertOrUpdateWithCallback(oldNote, new Handler(), new NoteSaverService.OnChange() {
+            saver.insertOrUpdateWithCallback(user, oldNote, new Handler(), new NoteSaverService.OnChange() {
                 @Override
                 public void onChange(long leftToAdd) {
                     toServerAndUpdate.run();
@@ -311,7 +316,7 @@ public class NoteStorage implements Closeable, Handler.Callback {
         NoteSaverService.LocalSaver.Query query = saver.new Query();
         query.fromFilter(filter).withSubstring(searchInTitle, searchInDescription);
         //TODO: get cursor async
-        adapter.updateData(query.getCursor());
+        adapter.updateData(query.getCursor(user));
     }
 
     public void searchSubstring(String inTitle, String inDescription) {
@@ -337,11 +342,11 @@ public class NoteStorage implements Closeable, Handler.Callback {
     }
 
     public void importFromFile(String filename) {
-        noteFileOperator.importFromFile(filename, new Messenger(new Handler(this)));
+        noteFileOperator.importFromFile(user, filename, new Messenger(new Handler(this)));
     }
 
     public void exportToFile(String filename) {
-        noteFileOperator.exportToFile(filename, new Messenger(new Handler(this)));
+        noteFileOperator.exportToFile(user, filename, new Messenger(new Handler(this)));
     }
 
     @Override
