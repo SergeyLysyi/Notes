@@ -67,6 +67,9 @@
     <string name="new_user_id_not_empty">user id can\'t be empty</string>
     <string name="item_user_id">id: %d</string>
     <string name="main_menu_user">User: %s</string>
+    <string name="user_guide_step_add">Click \"+\" button to create user</string>
+    <string name="user_guide_step_username_and_id">Input desired username and remote server id</string>
+    <string name="user_guide_step_choose">User created! Now click on it</string>
 
     <string-array name="sort_columns_list">
         <item>Title</item>

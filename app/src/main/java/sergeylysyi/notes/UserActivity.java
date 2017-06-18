@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 
 public class UserActivity extends AppCompatActivity implements UserAdapter.OnUserClick {
@@ -36,6 +37,7 @@ public class UserActivity extends AppCompatActivity implements UserAdapter.OnUse
     private List<User> users;
     private UserAdapter adapter;
     private JsonAdapter<List<User>> jsonUserAdapter;
+    private final AtomicBoolean initGuide = new AtomicBoolean(false);
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -51,6 +53,8 @@ public class UserActivity extends AppCompatActivity implements UserAdapter.OnUse
         try {
             if (!"".equals(json)) {
                 users = jsonUserAdapter.fromJson(json);
+            } else {
+                initGuide.set(true);
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -63,6 +67,10 @@ public class UserActivity extends AppCompatActivity implements UserAdapter.OnUse
         rv.setLayoutManager(new LinearLayoutManager(this));
         rv.setAdapter(adapter);
         adapter.notifyDataSetChanged();
+
+        if (initGuide.get()) {
+            Toast.makeText(this, R.string.user_guide_step_add, Toast.LENGTH_LONG).show();
+        }
     }
 
     public void launchAdd(View view) {
@@ -93,11 +101,16 @@ public class UserActivity extends AppCompatActivity implements UserAdapter.OnUse
                         } else {
                             users.add(new User(username, Integer.parseInt(id)));
                             successCallback.run();
+                            if (initGuide.get())
+                                Toast.makeText(UserActivity.this, R.string.user_guide_step_choose, Toast.LENGTH_LONG)
+                                        .show();
                         }
                     }
                 })
                 .create();
         d.show();
+        if (initGuide.get())
+            Toast.makeText(this, R.string.user_guide_step_username_and_id, Toast.LENGTH_LONG).show();
     }
 
     @Override
