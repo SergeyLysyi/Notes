@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ScrollPalette</string>
+    <string name="app_name">Notes</string>
 
     <string name="action_settings">Settings</string>
     <string name="button">choose color from palette</string>
@@ -45,6 +45,17 @@
     <string name="dialog_filter_pick_criteria">Pick criteria</string>
     <string name="export_no_file_manager">No file manager to pick file for export</string>
     <string name="import_no_file_manager">No file manager to pick file for import</string>
+    <string name="export_no_entries_to_export">No records to export</string>
+    <string name="import_not_supported_from_directory">Import from whole directory not supported</string>
+    <string name="notification_import_progress">Import: %.4f%% done</string>
+    <string name="notification_import_finish">Import: %s</string>
+    <string name="notification_export_progress">Export: %.4f%% done</string>
+    <string name="notification_export_finish">Export: %s</string>
+    <string name="notification_success">done</string>
+    <string name="notification_failed">failed</string>
+    <string name="notification_db_left_to_add">Notes left for save: %d</string>
+    <string name="imageURL">URL Path To Image</string>
+    <string name="load_from_url_error">Can\'t load image from that URL</string>
 
     <string-array name="sort_columns_list">
         <item>Title</item>

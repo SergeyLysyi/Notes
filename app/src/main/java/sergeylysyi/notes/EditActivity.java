@@ -3,12 +3,22 @@ package sergeylysyi.notes;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.squareup.picasso.Callback;
+import com.squareup.picasso.Picasso;
+
+import sergeylysyi.notes.note.Note;
 
 import static sergeylysyi.notes.ScrollPalette.INTENT_KEY_COLOR;
 import static sergeylysyi.notes.ScrollPalette.INTENT_KEY_COLOR_TO_EDIT;
@@ -16,22 +26,21 @@ import static sergeylysyi.notes.ScrollPalette.INTENT_KEY_IS_CHANGED;
 
 
 public class EditActivity extends AppCompatActivity {
-    public static final String INTENT_KEY_NOTE_TITLE = "header";
-    public static final String INTENT_KEY_NOTE_DESCRIPTION = "body";
-    public static final String INTENT_KEY_NOTE_COLOR = "color";
-    public static final String INTENT_KEY_NOTE_INDEX = "index";
+    public static final String TAG = EditActivity.class.getName();
+
+    public static final String INTENT_KEY_NOTE = "note";
     public static final String INTENT_KEY_NOTE_IS_CHANGED = "isChanged";
     public static final int EDIT_NOTE = 1;
-    public static final int DEFAULT_COLOR_FOR_INTENT = 0;
-    public static final int DEFAULT_INDEX_FOR_INTENT = -1;
     public static final String SAVED_KEY_CURRENT_COLOR = "current_color";
-
-    private int index;
+    public static final String SAVED_KEY_NOTE = "note";
 
     private EditText headerField;
     private EditText bodyField;
+    private EditText imageURL;
+    private ImageView imageFromURL;
 
     private CurrentColor currentColor;
+    private Note noteToEdit;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,15 +51,37 @@ public class EditActivity extends AppCompatActivity {
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
         Intent intent = getIntent();
-        currentColor = new CurrentColor(intent.getIntExtra(INTENT_KEY_NOTE_COLOR, DEFAULT_COLOR_FOR_INTENT));
-        index = intent.getIntExtra(INTENT_KEY_NOTE_INDEX, DEFAULT_INDEX_FOR_INTENT);
+        noteToEdit = intent.getParcelableExtra(INTENT_KEY_NOTE);
+        currentColor = new CurrentColor(noteToEdit.getColor());
 
         currentColor.addViewForBackgroundChange(findViewById(R.id.colorView));
 
         headerField = (EditText) findViewById(R.id.title);
         bodyField = (EditText) findViewById(R.id.description);
-        headerField.setText(intent.getStringExtra(INTENT_KEY_NOTE_TITLE));
-        bodyField.setText(intent.getStringExtra(INTENT_KEY_NOTE_DESCRIPTION));
+        imageURL = (EditText) findViewById(R.id.imageURL);
+        imageFromURL = (ImageView) findViewById(R.id.imageFromURL);
+        headerField.setText(noteToEdit.getTitle());
+        bodyField.setText(noteToEdit.getDescription());
+        final String imageURLText = noteToEdit.getImageUrl();
+        imageURL.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                if (!hasFocus)
+                    loadImage();
+            }
+        });
+        imageURL.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                if (actionId == EditorInfo.IME_ACTION_DONE) {
+                    loadImage();
+                }
+                return false;
+            }
+        });
+        if (imageURLText.length() > 0) {
+            imageURL.setText(imageURLText);
+        }
 
         findViewById(R.id.colorView).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -58,6 +89,25 @@ public class EditActivity extends AppCompatActivity {
                 paletteForResult();
             }
         });
+    }
+
+    private void loadImage() {
+        final String imageURLText = imageURL.getText().toString();
+        if (imageURLText.length() > 0) {
+            imageFromURL.setVisibility(View.VISIBLE);
+            Picasso.with(EditActivity.this).load(imageURLText).into(imageFromURL, new Callback() {
+                @Override
+                public void onSuccess() {
+                }
+
+                @Override
+                public void onError() {
+                    imageFromURL.setVisibility(View.GONE);
+                    Toast.makeText(EditActivity.this, R.string.load_from_url_error, Toast.LENGTH_LONG).show();
+                    Log.w(TAG, "onError: error loading image on url:\"" + imageURLText + "\"");
+                }
+            });
+        }
     }
 
     void paletteForResult() {
@@ -98,10 +148,11 @@ public class EditActivity extends AppCompatActivity {
     private void finishWithResult(boolean result) {
         Intent intent = new Intent();
         intent.putExtra(INTENT_KEY_NOTE_IS_CHANGED, result);
-        intent.putExtra(INTENT_KEY_NOTE_TITLE, headerField.getText().toString());
-        intent.putExtra(INTENT_KEY_NOTE_DESCRIPTION, bodyField.getText().toString());
-        intent.putExtra(INTENT_KEY_NOTE_COLOR, currentColor.getColor());
-        intent.putExtra(INTENT_KEY_NOTE_INDEX, index);
+        noteToEdit.setTitle(headerField.getText().toString());
+        noteToEdit.setDescription(bodyField.getText().toString());
+        noteToEdit.setColor(currentColor.getColor());
+        noteToEdit.setImageURL(imageURL.getText().toString());
+        intent.putExtra(INTENT_KEY_NOTE, noteToEdit);
         setResult(RESULT_OK, intent);
         finish();
     }
@@ -121,8 +172,15 @@ public class EditActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onResume() {
+        loadImage();
+        super.onResume();
+    }
+
+    @Override
     protected void onSaveInstanceState(Bundle outState) {
         outState.putInt(SAVED_KEY_CURRENT_COLOR, currentColor.getColor());
+        outState.putParcelable(SAVED_KEY_NOTE, noteToEdit);
         super.onSaveInstanceState(outState);
     }
 
@@ -132,5 +190,6 @@ public class EditActivity extends AppCompatActivity {
 
         int color = savedInstanceState.getInt(SAVED_KEY_CURRENT_COLOR);
         currentColor.change(color);
+        noteToEdit = savedInstanceState.getParcelable(SAVED_KEY_NOTE);
     }
 }

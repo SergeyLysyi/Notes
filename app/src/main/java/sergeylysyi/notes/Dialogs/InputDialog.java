@@ -27,13 +27,13 @@ class InputDialog {
      * @param context          Activity context.
      * @param forbiddenStrings Forbidden result values.
      * @param callback         Called with successful input. Result will be not empty String.
-     * @param textToFill       Fill TextView with that text. Use null to left empty.
+     * @param oldText          Fill TextView with that text. Use null to left empty.
      */
-    InputDialog(final Context context, final String[] forbiddenStrings, String textToFill, final Callback callback) {
+    InputDialog(final Context context, final String[] forbiddenStrings, String oldText, final Callback callback) {
         final EditText input = new EditText(context);
         input.setHint(R.string.dialog_manage_filters_input_hint);
-        if (textToFill != null) {
-            input.setText(textToFill);
+        if (oldText != null) {
+            input.setText(oldText);
         }
         dialog = new AlertDialog.Builder(context)
                 .setTitle(R.string.dialog_filter_manager_input_title)
@@ -50,16 +50,16 @@ class InputDialog {
                 positiveButton.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        String filterName = input.getText().toString();
-                        if (filterName.length() == 0) {
+                        String newText = input.getText().toString();
+                        if (newText.length() == 0) {
                             Toast.makeText(context, R.string.dialog_manage_filters_input_ifempty,
                                     Toast.LENGTH_LONG)
                                     .show();
                             return;
                         }
                         if (forbiddenStrings != null) {
-                            for (String existingName : forbiddenStrings) {
-                                if (filterName.equals(existingName)) {
+                            for (String forbidden : forbiddenStrings) {
+                                if (newText.equals(forbidden)) {
                                     Toast.makeText(context, R.string.dialog_manage_filters_add_already_exists,
                                             Toast.LENGTH_LONG)
                                             .show();
@@ -68,7 +68,7 @@ class InputDialog {
                             }
                         }
                         dialog.dismiss();
-                        callback.call(filterName);
+                        callback.call(newText);
                     }
                 });
             }
